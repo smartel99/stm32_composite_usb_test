@@ -16,18 +16,15 @@
  */
 #include "g473/Core/Inc/main.h"
 
-#include "adc.h"
 #include "cmsis_os.h"
-#include "dac.h"
 #include "gpio.h"
-#include "opamp.h"
-#include "spi.h"
-#include "tim.h"
 #include "usart.h"
-#include "usb_device.h"
+// #include "usb_device.h"
+
 
 extern "C" void SystemClock_Config(void);
 extern "C" void MX_FREERTOS_Init(void);
+
 
 /**
  * @brief  The application entry point.
@@ -57,26 +54,8 @@ int main()
 
     /* Initialize all configured peripherals */
     MX_GPIO_Init();
-    MX_ADC1_Init();
-    MX_ADC2_Init();
-    MX_ADC3_Init();
-    MX_ADC4_Init();
-    MX_DAC1_Init();
-    MX_OPAMP3_Init();
-    MX_OPAMP4_Init();
-    MX_OPAMP5_Init();
-    MX_SPI1_Init();
-    MX_TIM1_Init();
-    MX_TIM2_Init();
-    MX_TIM3_Init();
-    MX_TIM4_Init();
-    MX_TIM5_Init();
-    MX_TIM8_Init();
-    MX_TIM16_Init();
-    MX_TIM17_Init();
-    MX_TIM20_Init();
     MX_USART1_UART_Init();
-    MX_USB_Device_Init();
+    //    MX_USB_Device_Init();
     /* USER CODE BEGIN 2 */
 
     /* USER CODE END 2 */
@@ -93,8 +72,7 @@ int main()
     /* We should never get here as control is now taken by the scheduler */
     /* Infinite loop */
     /* USER CODE BEGIN WHILE */
-    while (1)
-    {
+    while (1) {
         /* USER CODE END WHILE */
 
         /* USER CODE BEGIN 3 */

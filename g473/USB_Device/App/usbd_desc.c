@@ -67,8 +67,8 @@
 #define USBD_MANUFACTURER_STRING     "STMicroelectronics"
 #define USBD_PID     22336
 #define USBD_PRODUCT_STRING     "STM32 Virtual ComPort"
-#define USBD_CONFIGURATION_STRING     "cdc Config"
-#define USBD_INTERFACE_STRING     "cdc Interface"
+#define USBD_CONFIGURATION_STRING     "CDC Config"
+#define USBD_INTERFACE_STRING     "CDC Interface"
 
 /* USER CODE BEGIN PRIVATE_DEFINES */
 
@@ -393,3 +393,4 @@ static void IntToUnicode(uint32_t value, uint8_t * pbuf, uint8_t len)
 /**
   * @}
   */
+

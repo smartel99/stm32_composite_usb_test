@@ -90,7 +90,7 @@
 /** Received data over USB are stored in this buffer      */
 uint8_t UserRxBufferFS[APP_RX_DATA_SIZE];
 
-/** Data to send over USB cdc are stored in this buffer   */
+/** Data to send over USB CDC are stored in this buffer   */
 uint8_t UserTxBufferFS[APP_TX_DATA_SIZE];
 
 /* USER CODE BEGIN PRIVATE_VARIABLES */
@@ -146,7 +146,7 @@ USBD_CDC_ItfTypeDef USBD_Interface_fops_FS =
 
 /* Private functions ---------------------------------------------------------*/
 /**
-  * @brief  Initializes the cdc media low layer over the FS USB IP
+  * @brief  Initializes the CDC media low layer over the FS USB IP
   * @retval USBD_OK if all operations are OK else USBD_FAIL
   */
 static int8_t CDC_Init_FS(void)
@@ -160,7 +160,7 @@ static int8_t CDC_Init_FS(void)
 }
 
 /**
-  * @brief  DeInitializes the cdc media low layer
+  * @brief  DeInitializes the CDC media low layer
   * @retval USBD_OK if all operations are OK else USBD_FAIL
   */
 static int8_t CDC_DeInit_FS(void)
@@ -171,7 +171,7 @@ static int8_t CDC_DeInit_FS(void)
 }
 
 /**
-  * @brief  Manage the cdc class requests
+  * @brief  Manage the CDC class requests
   * @param  cmd: Command code
   * @param  pbuf: Buffer containing command data (request parameters)
   * @param  length: Number of data to be sent (in bytes)
@@ -244,13 +244,13 @@ static int8_t CDC_Control_FS(uint8_t cmd, uint8_t* pbuf, uint16_t length)
 }
 
 /**
-  * @brief  Data received over USB OUT endpoint are sent over cdc interface
+  * @brief  Data received over USB OUT endpoint are sent over CDC interface
   *         through this function.
   *
   *         @note
   *         This function will issue a NAK packet on any OUT packet received on
   *         USB endpoint until exiting this function. If you exit this function
-  *         before transfer is complete on cdc interface (ie. using DMA controller)
+  *         before transfer is complete on CDC interface (ie. using DMA controller)
   *         it will result in receiving more data while previous ones are still
   *         not sent.
   *
@@ -269,7 +269,7 @@ static int8_t CDC_Receive_FS(uint8_t* Buf, uint32_t *Len)
 
 /**
   * @brief  CDC_Transmit_FS
-  *         Data to send over USB IN endpoint are sent over cdc interface
+  *         Data to send over USB IN endpoint are sent over CDC interface
   *         through this function.
   *         @note
   *

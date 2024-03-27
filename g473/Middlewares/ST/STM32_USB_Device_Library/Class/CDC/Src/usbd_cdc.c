@@ -3,9 +3,9 @@
   * @file    usbd_cdc.c
   * @author  MCD Application Team
   * @brief   This file provides the high layer firmware functions to manage the
-  *          following functionalities of the USB cdc Class:
+  *          following functionalities of the USB CDC Class:
   *           - Initialization and Configuration of high and low layer
-  *           - Enumeration as cdc Device (and enumeration for each implemented memory interface)
+  *           - Enumeration as CDC Device (and enumeration for each implemented memory interface)
   *           - OUT/IN data transfer
   *           - Command IN transfer (class requests management)
   *           - Error management
@@ -13,7 +13,7 @@
   *  @verbatim
   *
   *          ===================================================================
-  *                                cdc Class Driver Description
+  *                                CDC Class Driver Description
   *          ===================================================================
   *           This driver manages the "Universal Serial Bus Class Definitions for Communications Devices
   *           Revision 1.2 November 16, 2007" and the sub-protocol specification of "Universal Serial Bus
@@ -21,7 +21,7 @@
   *           This driver implements the following aspects of the specification:
   *             - Device descriptor management
   *             - Configuration descriptor management
-  *             - Enumeration as cdc device with 2 data endpoints (IN and OUT) and 1 command endpoint (IN)
+  *             - Enumeration as CDC device with 2 data endpoints (IN and OUT) and 1 command endpoint (IN)
   *             - Requests management (as described in section 6.2 in specification)
   *             - Abstract Control Model compliant
   *             - Union Functional collection (using 1 IN endpoint for control)
@@ -136,7 +136,7 @@ __ALIGN_BEGIN static uint8_t USBD_CDC_DeviceQualifierDesc[USB_LEN_DEV_QUALIFIER_
   */
 
 
-/* cdc interface class callbacks structure */
+/* CDC interface class callbacks structure */
 USBD_ClassTypeDef  USBD_CDC =
 {
   USBD_CDC_Init,
@@ -155,7 +155,7 @@ USBD_ClassTypeDef  USBD_CDC =
   USBD_CDC_GetDeviceQualifierDescriptor,
 };
 
-/* USB cdc device Configuration Descriptor */
+/* USB CDC device Configuration Descriptor */
 __ALIGN_BEGIN static uint8_t USBD_CDC_CfgHSDesc[USB_CDC_CONFIG_DESC_SIZ] __ALIGN_END =
 {
   /* Configuration Descriptor */
@@ -229,7 +229,7 @@ __ALIGN_BEGIN static uint8_t USBD_CDC_CfgHSDesc[USB_CDC_CONFIG_DESC_SIZ] __ALIGN
   0x01,                                       /* bInterfaceNumber: Number of Interface */
   0x00,                                       /* bAlternateSetting: Alternate setting */
   0x02,                                       /* bNumEndpoints: Two endpoints used */
-  0x0A,                                       /* bInterfaceClass: cdc */
+  0x0A,                                       /* bInterfaceClass: CDC */
   0x00,                                       /* bInterfaceSubClass: */
   0x00,                                       /* bInterfaceProtocol: */
   0x00,                                       /* iInterface: */
@@ -254,7 +254,7 @@ __ALIGN_BEGIN static uint8_t USBD_CDC_CfgHSDesc[USB_CDC_CONFIG_DESC_SIZ] __ALIGN
 };
 
 
-/* USB cdc device Configuration Descriptor */
+/* USB CDC device Configuration Descriptor */
 __ALIGN_BEGIN static uint8_t USBD_CDC_CfgFSDesc[USB_CDC_CONFIG_DESC_SIZ] __ALIGN_END =
 {
   /* Configuration Descriptor */
@@ -329,7 +329,7 @@ __ALIGN_BEGIN static uint8_t USBD_CDC_CfgFSDesc[USB_CDC_CONFIG_DESC_SIZ] __ALIGN
   0x01,                                       /* bInterfaceNumber: Number of Interface */
   0x00,                                       /* bAlternateSetting: Alternate setting */
   0x02,                                       /* bNumEndpoints: Two endpoints used */
-  0x0A,                                       /* bInterfaceClass: cdc */
+  0x0A,                                       /* bInterfaceClass: CDC */
   0x00,                                       /* bInterfaceSubClass: */
   0x00,                                       /* bInterfaceProtocol: */
   0x00,                                       /* iInterface: */
@@ -425,7 +425,7 @@ __ALIGN_BEGIN static uint8_t USBD_CDC_OtherSpeedCfgDesc[USB_CDC_CONFIG_DESC_SIZ]
   0x01,                                       /* bInterfaceNumber: Number of Interface */
   0x00,                                       /* bAlternateSetting: Alternate setting */
   0x02,                                       /* bNumEndpoints: Two endpoints used */
-  0x0A,                                       /* bInterfaceClass: cdc */
+  0x0A,                                       /* bInterfaceClass: CDC */
   0x00,                                       /* bInterfaceSubClass: */
   0x00,                                       /* bInterfaceProtocol: */
   0x00,                                       /* iInterface: */
@@ -459,7 +459,7 @@ __ALIGN_BEGIN static uint8_t USBD_CDC_OtherSpeedCfgDesc[USB_CDC_CONFIG_DESC_SIZ]
 
 /**
   * @brief  USBD_CDC_Init
-  *         Initialize the cdc interface
+  *         Initialize the CDC interface
   * @param  pdev: device instance
   * @param  cfgidx: Configuration index
   * @retval status
@@ -493,7 +493,7 @@ static uint8_t USBD_CDC_Init(USBD_HandleTypeDef *pdev, uint8_t cfgidx)
 
     pdev->ep_out[CDC_OUT_EP & 0xFU].is_used = 1U;
 
-    /* Set bInterval for cdc CMD Endpoint */
+    /* Set bInterval for CDC CMD Endpoint */
     pdev->ep_in[CDC_CMD_EP & 0xFU].bInterval = CDC_HS_BINTERVAL;
   }
   else
@@ -543,7 +543,7 @@ static uint8_t USBD_CDC_Init(USBD_HandleTypeDef *pdev, uint8_t cfgidx)
 
 /**
   * @brief  USBD_CDC_Init
-  *         DeInitialize the cdc layer
+  *         DeInitialize the CDC layer
   * @param  pdev: device instance
   * @param  cfgidx: Configuration index
   * @retval status
@@ -578,7 +578,7 @@ static uint8_t USBD_CDC_DeInit(USBD_HandleTypeDef *pdev, uint8_t cfgidx)
 
 /**
   * @brief  USBD_CDC_Setup
-  *         Handle the cdc specific requests
+  *         Handle the CDC specific requests
   * @param  pdev: instance
   * @param  req: usb requests
   * @retval status

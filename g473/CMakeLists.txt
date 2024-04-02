@@ -49,7 +49,19 @@ else ()
     add_compile_options(-Og -g)
 endif ()
 
-include_directories(Core/Inc Drivers/STM32G4xx_HAL_Driver/Inc Drivers/STM32G4xx_HAL_Driver/Inc/Legacy Middlewares/Third_Party/FreeRTOS/Source/include Middlewares/Third_Party/FreeRTOS/Source/CMSIS_RTOS_V2 Middlewares/Third_Party/FreeRTOS/Source/portable/GCC/ARM_CM4F Drivers/CMSIS/Device/ST/STM32G4xx/Include Drivers/CMSIS/Include Core/ThreadSafe Middlewares/Third_Party/emotas_CANopen/emotas/Config Middlewares/Third_Party/emotas_CANopen/emotas/Library/inc USB_Device/App USB_Device/Target Middlewares/ST/STM32_USB_Device_Library/Core/Inc Middlewares/ST/STM32_USB_Device_Library/Class/CDC/Inc)
+include_directories(Core/Inc
+        Drivers/STM32G4xx_HAL_Driver/Inc
+        Drivers/STM32G4xx_HAL_Driver/Inc/Legacy
+        Middlewares/Third_Party/FreeRTOS/Source/include
+        Middlewares/Third_Party/FreeRTOS/Source/CMSIS_RTOS_V2
+        Middlewares/Third_Party/FreeRTOS/Source/portable/GCC/ARM_CM4F
+        Drivers/CMSIS/Device/ST/STM32G4xx/Include Drivers/CMSIS/Include
+        Core/ThreadSafe
+        Middlewares/Third_Party/emotas_CANopen/emotas/Config
+        Middlewares/Third_Party/emotas_CANopen/emotas/Library/inc
+        USB_Device/App USB_Device/Target
+        Middlewares/ST/STM32_USB_Device_Library/Core/Inc
+        Middlewares/ST/STM32_USB_Device_Library/Class/CDC/Inc)
 
 add_definitions(-DDEBUG -DUSE_HAL_DRIVER -DSTM32G473xx -DSTM32_THREAD_SAFE_STRATEGY=4)
 

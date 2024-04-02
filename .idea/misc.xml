@@ -4,4 +4,10 @@
     <option name="sdkName" value="Python 3.11" />
   </component>
   <component name="CMakeWorkspace" PROJECT_DIR="$PROJECT_DIR$" />
+  <component name="CidrRootsConfiguration">
+    <excludeRoots>
+      <file path="$PROJECT_DIR$/g473/USB_Device" />
+      <file path="$PROJECT_DIR$/g473/cmake-build-debug-gcc_arm_132" />
+    </excludeRoots>
+  </component>
 </project>

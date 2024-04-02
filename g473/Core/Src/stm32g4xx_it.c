@@ -59,7 +59,7 @@ extern PCD_HandleTypeDef hpcd_USB_FS;
 extern TIM_HandleTypeDef htim6;
 
 /* USER CODE BEGIN EV */
-PCD_HandleTypeDef hpcd_USB_FS;
+extern PCD_HandleTypeDef hpcd_USB_FS;
 /* USER CODE END EV */
 
 /******************************************************************************/

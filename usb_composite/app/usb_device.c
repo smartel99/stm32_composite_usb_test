@@ -7,23 +7,24 @@
   ******************************************************************************
   * @attention
   *
-  * Copyright (c) 2024 STMicroelectronics.
-  * All rights reserved.
+  * <h2><center>&copy; Copyright (c) 2020 STMicroelectronics.
+  * All rights reserved.</center></h2>
   *
-  * This software is licensed under terms that can be found in the LICENSE file
-  * in the root directory of this software component.
-  * If no LICENSE file comes with this software, it is provided AS-IS.
+  * This software component is licensed by ST under Ultimate Liberty license
+  * SLA0044, the "License"; You may not use this file except in compliance with
+  * the License. You may obtain a copy of the License at:
+  *                             www.st.com/SLA0044
   *
   ******************************************************************************
   */
 /* USER CODE END Header */
 
 /* Includes ------------------------------------------------------------------*/
-
+ 
 #include "usb_device.h"
 #include "usbd_core.h"
 #include "usbd_desc.h"
-#include "usbd_cdc.h"
+#include "usbd_dcdc.h"
 #include "usbd_cdc_if.h"
 
 /* USER CODE BEGIN Includes */
@@ -43,7 +44,7 @@
 extern void Error_Handler(void);
 /* USB Device Core handle declaration. */
 USBD_HandleTypeDef hUsbDeviceFS;
-extern USBD_DescriptorsTypeDef CDC_Desc;
+extern USBD_DescriptorsTypeDef DCDC_Desc;
 
 /*
  * -- Insert your variables declaration here --
@@ -66,24 +67,24 @@ extern USBD_DescriptorsTypeDef CDC_Desc;
 void MX_USB_Device_Init(void)
 {
   /* USER CODE BEGIN USB_Device_Init_PreTreatment */
-
+  
   /* USER CODE END USB_Device_Init_PreTreatment */
-
+  
   /* Init Device Library, add supported class and start the library. */
-  if (USBD_Init(&hUsbDeviceFS, &CDC_Desc, DEVICE_FS) != USBD_OK) {
+  if (USBD_Init(&hUsbDeviceFS, &DCDC_Desc, DEVICE_FS) != USBD_OK) {
     Error_Handler();
   }
-  if (USBD_RegisterClass(&hUsbDeviceFS, &USBD_CDC) != USBD_OK) {
+  if (USBD_RegisterClass(&hUsbDeviceFS, &USBD_DCDC) != USBD_OK) {
     Error_Handler();
   }
-  if (USBD_CDC_RegisterInterface(&hUsbDeviceFS, &USBD_Interface_fops_FS) != USBD_OK) {
+  if (USBD_DCDC_RegisterInterface(&hUsbDeviceFS, &USBD_Interface_fops_FS) != USBD_OK) {
     Error_Handler();
   }
   if (USBD_Start(&hUsbDeviceFS) != USBD_OK) {
     Error_Handler();
   }
   /* USER CODE BEGIN USB_Device_Init_PostTreatment */
-
+  
   /* USER CODE END USB_Device_Init_PostTreatment */
 }
 
@@ -95,3 +96,4 @@ void MX_USB_Device_Init(void)
   * @}
   */
 
+/************************ (C) COPYRIGHT STMicroelectronics *****END OF FILE****/

@@ -7,12 +7,13 @@
   ******************************************************************************
   * @attention
   *
-  * Copyright (c) 2024 STMicroelectronics.
-  * All rights reserved.
+  * <h2><center>&copy; Copyright (c) 2020 STMicroelectronics.
+  * All rights reserved.</center></h2>
   *
-  * This software is licensed under terms that can be found in the LICENSE file
-  * in the root directory of this software component.
-  * If no LICENSE file comes with this software, it is provided AS-IS.
+  * This software component is licensed by ST under Ultimate Liberty license
+  * SLA0044, the "License"; You may not use this file except in compliance with
+  * the License. You may obtain a copy of the License at:
+  *                             www.st.com/SLA0044
   *
   ******************************************************************************
   */
@@ -65,13 +66,13 @@
   */
 
 /*---------- -----------*/
-#define USBD_MAX_NUM_INTERFACES     1U
+#define USBD_MAX_NUM_INTERFACES     4U
 /*---------- -----------*/
 #define USBD_MAX_NUM_CONFIGURATION     1U
 /*---------- -----------*/
 #define USBD_MAX_STR_DESC_SIZ     512U
 /*---------- -----------*/
-#define USBD_DEBUG_LEVEL     0U
+#define USBD_DEBUG_LEVEL     3U
 /*---------- -----------*/
 #define USBD_LPM_ENABLED     1U
 /*---------- -----------*/
@@ -93,16 +94,16 @@
 /* Memory management macros */
 
 /** Alias for memory allocation. */
-#define USBD_malloc         (void *)USBD_static_malloc
+#define USBD_malloc         (uint32_t *)USBD_static_malloc
 
 /** Alias for memory release. */
 #define USBD_free           USBD_static_free
 
 /** Alias for memory set. */
-#define USBD_memset         memset
+#define USBD_memset         /* Not used */
 
 /** Alias for memory copy. */
-#define USBD_memcpy         memcpy
+#define USBD_memcpy         /* Not used */
 
 /** Alias for delay. */
 #define USBD_Delay          HAL_Delay
@@ -173,3 +174,4 @@ void USBD_static_free(void *p);
 
 #endif /* __USBD_CONF__H__ */
 
+/************************ (C) COPYRIGHT STMicroelectronics *****END OF FILE****/

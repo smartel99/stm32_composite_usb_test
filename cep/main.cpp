@@ -19,11 +19,38 @@
 #include "cmsis_os.h"
 #include "gpio.h"
 #include "usart.h"
-// #include "usb_device.h"
+#include "usb_device.h"
+#include "usbd_cdc_if.h"
+
+#include <logging/logger.h>
+#include <logging/uart_sink.h>
 
 
 extern "C" void SystemClock_Config(void);
 extern "C" void MX_FREERTOS_Init(void);
+
+extern "C" USBD_HandleTypeDef hUsbDeviceFS;
+
+extern "C" void StartDefaultTask(void* args)
+{
+    for (;;) {
+        USBD_DCDC_HandleTypeDef* hcdc = (USBD_DCDC_HandleTypeDef*)hUsbDeviceFS.pClassData;
+        ROOT_LOGI("Ping");
+        if (auto res = CDC_Transmit_FS(&hcdc->frasyCdc, (uint8_t*)"hewwo :3\n", 9); res != USBD_OK) {
+            ROOT_LOGW("Unable to send on CDC1: %02x", res);
+        }
+        if (auto res = CDC_Transmit_FS(&hcdc->debugCdc, (uint8_t*)"not hewwo >:3\n", 14); res != USBD_OK) {
+            ROOT_LOGW("Unable to send on CDC2: %02x", res);
+        }
+        osDelay(1000);
+    }
+}
+
+extern "C" [[gnu::used]] int _write(int file, char* ptr, int len)
+{
+    ROOT_LOGD("%s", ptr);
+    return len;
+}
 
 
 /**
@@ -55,9 +82,12 @@ int main()
     /* Initialize all configured peripherals */
     MX_GPIO_Init();
     MX_USART1_UART_Init();
-    //    MX_USB_Device_Init();
+    MX_USB_Device_Init();
     /* USER CODE BEGIN 2 */
+    Logging::Logger::setGetTime(&HAL_GetTick);
+    Logging::Logger::addSink<Logging::UartSink>(&huart1);
 
+    ROOT_LOGI("Logger Initialized.");
     /* USER CODE END 2 */
 
     /* Init scheduler */
@@ -72,7 +102,8 @@ int main()
     /* We should never get here as control is now taken by the scheduler */
     /* Infinite loop */
     /* USER CODE BEGIN WHILE */
-    while (1) {
+    volatile bool t = true;
+    while (t) {
         /* USER CODE END WHILE */
 
         /* USER CODE BEGIN 3 */

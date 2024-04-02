@@ -72,17 +72,17 @@ include_directories(
         ${SRC_DIR}/g473/Middlewares/Third_Party/FreeRTOS/Source/include
         ${SRC_DIR}/g473/Middlewares/Third_Party/FreeRTOS/Source/CMSIS_RTOS_V2
         ${SRC_DIR}/g473/Middlewares/Third_Party/FreeRTOS/Source/portable/GCC/ARM_CM4F
+        ${SRC_DIR}/g473/Middlewares/ST/STM32_USB_Device_Library/Core/Inc
+        ${SRC_DIR}/g473/Middlewares/ST/STM32_USB_Device_Library/Class/CDC/Inc
         ${SRC_DIR}/g473/Drivers/CMSIS/Device/ST/STM32G4xx/Include
         ${SRC_DIR}/g473/Drivers/CMSIS/Include
         ${SRC_DIR}/g473/Core/ThreadSafe
         ${SRC_DIR}/g473/CANopen/App
         ${SRC_DIR}/g473/Middlewares/Third_Party/emotas_CANopen/emotas/Config
         ${SRC_DIR}/g473/Middlewares/Third_Party/emotas_CANopen/emotas/Library/inc
-        ${SRC_DIR}/usb_composite/app/cdc
-        ${SRC_DIR}/usb_composite/usbd_conf
-        ${SRC_DIR}/usb_composite/core/inc
-        ${SRC_DIR}/usb_composite/usb_device
-        ${SRC_DIR}/usb_composite/class/cdc/inc
+        ${SRC_DIR}/usb_composite/app
+        ${SRC_DIR}/usb_composite/target
+        ${SRC_DIR}/usb_composite/middlewares/st/class/dcdc/inc
         ${SRC_DIR}/vendor
 )
 
@@ -91,10 +91,11 @@ add_definitions(-DDEBUG -DUSE_HAL_DRIVER -DSTM32G473xx -DSTM32_THREAD_SAFE_STRAT
 file(GLOB_RECURSE SOURCES
         "${SRC_DIR}/g473/CANopen/*.*"
         "${SRC_DIR}/g473/Core/*.*"
-        "${SRC_DIR}/g473/Middlewares/Third_Party/*.*"
+        "${SRC_DIR}/g473/Middlewares/*.*"
         "${SRC_DIR}/g473/Drivers/*.*"
         "${SRC_DIR}/cep/main.cpp"
-#        "${SRC_DIR}/usb_composite/*.*"
+        "${SRC_DIR}/vendor/*.*"
+        "${SRC_DIR}/usb_composite/*.*"
 )
 
 set(LINKER_SCRIPT ${SRC_DIR}/g473/STM32G473QETX_FLASH.ld)

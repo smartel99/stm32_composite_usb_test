@@ -1,18 +1,19 @@
 /* USER CODE BEGIN Header */
 /**
   ******************************************************************************
-  * @file           : App/usbd_desc.c
+  * @file           : usbd_desc.c
   * @version        : v3.0_Cube
   * @brief          : This file implements the USB device descriptors.
   ******************************************************************************
   * @attention
   *
-  * Copyright (c) 2024 STMicroelectronics.
-  * All rights reserved.
+  * <h2><center>&copy; Copyright (c) 2020 STMicroelectronics.
+  * All rights reserved.</center></h2>
   *
-  * This software is licensed under terms that can be found in the LICENSE file
-  * in the root directory of this software component.
-  * If no LICENSE file comes with this software, it is provided AS-IS.
+  * This software component is licensed by ST under Ultimate Liberty license
+  * SLA0044, the "License"; You may not use this file except in compliance with
+  * the License. You may obtain a copy of the License at:
+  *                             www.st.com/SLA0044
   *
   ******************************************************************************
   */
@@ -65,10 +66,10 @@
 #define USBD_VID     1155
 #define USBD_LANGID_STRING     1033
 #define USBD_MANUFACTURER_STRING     "STMicroelectronics"
-#define USBD_PID     22336
+#define USBD_PID     22337
 #define USBD_PRODUCT_STRING     "STM32 Virtual ComPort"
-#define USBD_CONFIGURATION_STRING     "cdc Config"
-#define USBD_INTERFACE_STRING     "cdc Interface"
+#define USBD_CONFIGURATION_STRING     "CDC Config"
+#define USBD_INTERFACE_STRING     "CDC Interface"
 
 /* USER CODE BEGIN PRIVATE_DEFINES */
 
@@ -107,6 +108,7 @@ static void IntToUnicode(uint32_t value, uint8_t * pbuf, uint8_t len);
   * @}
   */
 
+
 /** @defgroup USBD_DESC_Private_FunctionPrototypes USBD_DESC_Private_FunctionPrototypes
   * @brief Private functions declaration.
   * @{
@@ -129,7 +131,7 @@ uint8_t * USBD_CDC_InterfaceStrDescriptor(USBD_SpeedTypeDef speed, uint16_t *len
   * @{
   */
 
-USBD_DescriptorsTypeDef CDC_Desc =
+USBD_DescriptorsTypeDef DCDC_Desc =
 {
   USBD_CDC_DeviceDescriptor,
   USBD_CDC_LangIDStrDescriptor,
@@ -150,9 +152,9 @@ __ALIGN_BEGIN uint8_t USBD_CDC_DeviceDesc[USB_LEN_DEV_DESC] __ALIGN_END =
   USB_DESC_TYPE_DEVICE,       /*bDescriptorType*/
   0x00,                       /*bcdUSB */
   0x02,
-  0x02,                       /*bDeviceClass*/
-  0x02,                       /*bDeviceSubClass*/
-  0x00,                       /*bDeviceProtocol*/
+  USBD_DEV_CLASS,                       /*bDeviceClass*/
+  USBD_DEV_SUBCLASS,                       /*bDeviceSubClass*/
+  USBD_DEV_PROTOCOL,                       /*bDeviceProtocol*/
   USB_MAX_EP0_SIZE,           /*bMaxPacketSize*/
   LOBYTE(USBD_VID),           /*idVendor*/
   HIBYTE(USBD_VID),           /*idVendor*/
@@ -181,7 +183,7 @@ __ALIGN_BEGIN uint8_t USBD_CDC_DeviceDesc[USB_LEN_DEV_DESC] __ALIGN_END =
   #pragma data_alignment=4
 #endif /* defined ( __ICCARM__ ) */
 
-/** USB lang identifier descriptor. */
+/** USB lang indentifier descriptor. */
 __ALIGN_BEGIN uint8_t USBD_LangIDDesc[USB_LEN_LANGID_STR_DESC] __ALIGN_END =
 {
      USB_LEN_LANGID_STR_DESC,
@@ -338,9 +340,7 @@ uint8_t * USBD_CDC_InterfaceStrDescriptor(USBD_SpeedTypeDef speed, uint16_t *len
   */
 static void Get_SerialNum(void)
 {
-  uint32_t deviceserial0;
-  uint32_t deviceserial1;
-  uint32_t deviceserial2;
+  uint32_t deviceserial0, deviceserial1, deviceserial2;
 
   deviceserial0 = *(uint32_t *) DEVICE_ID1;
   deviceserial1 = *(uint32_t *) DEVICE_ID2;
@@ -393,3 +393,5 @@ static void IntToUnicode(uint32_t value, uint8_t * pbuf, uint8_t len)
 /**
   * @}
   */
+
+/************************ (C) COPYRIGHT STMicroelectronics *****END OF FILE****/

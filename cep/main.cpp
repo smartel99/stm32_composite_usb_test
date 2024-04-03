@@ -23,7 +23,10 @@
 #include "usbd_cdc_if.h"
 
 #include <logging/logger.h>
+#include <logging/proxy_sink.h>
 #include <logging/uart_sink.h>
+
+#include <new>
 
 
 extern "C" void SystemClock_Config(void);
@@ -60,7 +63,10 @@ extern "C" [[gnu::used]] int _write(int file, char* ptr, int len)
 int main()
 {
     /* USER CODE BEGIN 1 */
-
+    std::set_new_handler([]{
+        ROOT_LOGE("Memory allocation failed, terminating");
+        std::set_new_handler(nullptr);
+    });
     /* USER CODE END 1 */
 
     /* MCU Configuration--------------------------------------------------------*/
@@ -85,9 +91,13 @@ int main()
     MX_USB_Device_Init();
     /* USER CODE BEGIN 2 */
     Logging::Logger::setGetTime(&HAL_GetTick);
-    Logging::Logger::addSink<Logging::UartSink>(&huart1);
+    auto* uartSink = Logging::Logger::addSink<Logging::UartSink>(&huart1);
+    Logging::Logger::addSink<Logging::ProxySink>(s_usbTag, uartSink);
 
     ROOT_LOGI("Logger Initialized.");
+
+    int* ptr = new int;
+    delete ptr;
     /* USER CODE END 2 */
 
     /* Init scheduler */

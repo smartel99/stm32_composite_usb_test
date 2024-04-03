@@ -38,7 +38,7 @@ extern "C" {
 
 /* USER CODE BEGIN PV */
 /* Private variables ---------------------------------------------------------*/
-
+const char* s_usbTag = "USB";
 /* USER CODE END PV */
 
 /** @addtogroup STM32_USB_OTG_DEVICE_LIBRARY

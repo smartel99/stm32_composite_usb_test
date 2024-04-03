@@ -91,7 +91,7 @@
 extern USBD_DCDC_ItfTypeDef USBD_Interface_fops_FS;
 
 /* USER CODE BEGIN EXPORTED_VARIABLES */
-inline const char* s_usbTag = "USB";
+extern const char* s_usbTag;
 /* USER CODE END EXPORTED_VARIABLES */
 
 /**

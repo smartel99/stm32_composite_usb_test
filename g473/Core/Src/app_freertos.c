@@ -60,7 +60,7 @@ const osThreadAttr_t defaultTask_attributes = {
 
 /* USER CODE END FunctionPrototypes */
 
-[[noreturn]] void StartDefaultTask(void *argument);
+void StartDefaultTask(void *argument);
 
 void MX_FREERTOS_Init(void); /* (MISRA C 2004 rule 8.1) */
 
@@ -155,7 +155,7 @@ void MX_FREERTOS_Init(void) {
   * @retval None
   */
 /* USER CODE END Header_StartDefaultTask */
-[[noreturn]] __weak void StartDefaultTask(void *argument)
+__weak void StartDefaultTask(void *argument)
 {
   /* USER CODE BEGIN StartDefaultTask */
   /* Infinite loop */
@@ -170,3 +170,4 @@ void MX_FREERTOS_Init(void) {
 /* USER CODE BEGIN Application */
 
 /* USER CODE END Application */
+

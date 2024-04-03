@@ -36,7 +36,7 @@ add_compile_options(-fdata-sections)
 add_compile_options(-ffunction-sections)
 add_compile_options(-fmessage-length=0)
 add_compile_options(-fno-common)
-add_compile_options(-fno-exceptions)
+#add_compile_options(-fno-exceptions)
 add_compile_options(-Wno-psabi)
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fno-enforce-eh-specs")
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fno-use-cxa-atexit")
@@ -93,7 +93,7 @@ file(GLOB_RECURSE SOURCES
         "${SRC_DIR}/g473/Core/*.*"
         "${SRC_DIR}/g473/Middlewares/*.*"
         "${SRC_DIR}/g473/Drivers/*.*"
-        "${SRC_DIR}/cep/main.cpp"
+        "${SRC_DIR}/cep/*.*"
         "${SRC_DIR}/vendor/*.*"
         "${SRC_DIR}/usb_composite/*.*"
 )

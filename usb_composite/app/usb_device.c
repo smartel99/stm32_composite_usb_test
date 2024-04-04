@@ -20,7 +20,7 @@
 /* USER CODE END Header */
 
 /* Includes ------------------------------------------------------------------*/
- 
+
 #include "usb_device.h"
 #include "usbd_core.h"
 #include "usbd_desc.h"
@@ -67,9 +67,9 @@ extern USBD_DescriptorsTypeDef DCDC_Desc;
 void MX_USB_Device_Init(void)
 {
   /* USER CODE BEGIN USB_Device_Init_PreTreatment */
-  
+
   /* USER CODE END USB_Device_Init_PreTreatment */
-  
+
   /* Init Device Library, add supported class and start the library. */
   if (USBD_Init(&hUsbDeviceFS, &DCDC_Desc, DEVICE_FS) != USBD_OK) {
     Error_Handler();
@@ -77,14 +77,14 @@ void MX_USB_Device_Init(void)
   if (USBD_RegisterClass(&hUsbDeviceFS, &USBD_DCDC) != USBD_OK) {
     Error_Handler();
   }
-  if (USBD_DCDC_RegisterInterface(&hUsbDeviceFS, &USBD_Interface_fops_FS) != USBD_OK) {
+  if (USBD_DCDC_RegisterInterface(&hUsbDeviceFS, &g_usbdInterfaceFopsFs) != USBD_OK) {
     Error_Handler();
   }
   if (USBD_Start(&hUsbDeviceFS) != USBD_OK) {
     Error_Handler();
   }
   /* USER CODE BEGIN USB_Device_Init_PostTreatment */
-  
+
   /* USER CODE END USB_Device_Init_PostTreatment */
 }
 

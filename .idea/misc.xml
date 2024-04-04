@@ -8,6 +8,7 @@
     <excludeRoots>
       <file path="$PROJECT_DIR$/g473/USB_Device" />
       <file path="$PROJECT_DIR$/g473/cmake-build-debug-gcc_arm_132" />
+      <file path="$PROJECT_DIR$/vendor/cmbacktrace/demos" />
     </excludeRoots>
   </component>
 </project>

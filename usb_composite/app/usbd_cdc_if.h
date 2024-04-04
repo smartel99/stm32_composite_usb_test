@@ -88,10 +88,10 @@
   */
 
 /** CDC Interface callback. */
-extern USBD_DCDC_ItfTypeDef USBD_Interface_fops_FS;
+extern USBD_DCDC_ItfTypeDef g_usbdInterfaceFopsFs;
 
 /* USER CODE BEGIN EXPORTED_VARIABLES */
-extern const char* s_usbTag;
+extern const char* g_usbTag;
 /* USER CODE END EXPORTED_VARIABLES */
 
 /**

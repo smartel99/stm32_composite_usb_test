@@ -38,8 +38,11 @@ ENTRY(Reset_Handler)
 /* Highest address of the user mode stack */
 _estack = ORIGIN(RAM) + LENGTH(RAM); /* end of "RAM" Ram type memory */
 
-_Min_Heap_Size = 0x200; /* required amount of heap */
-_Min_Stack_Size = 0x400; /* required amount of stack */
+_Min_Heap_Size = 0x400; /* required amount of heap */
+_Min_Stack_Size = 0x4000; /* required amount of stack */
+
+/* Lowest address of the user mode stack */
+_sstack = _estack - _Min_Stack_Size;
 
 /* Memories definition */
 MEMORY
@@ -62,6 +65,7 @@ SECTIONS
   /* The program code and other data into "FLASH" Rom type memory */
   .text :
   {
+    _stext = .;
     . = ALIGN(4);
     *(.text)           /* .text sections (code) */
     *(.text*)          /* .text* sections (code) */

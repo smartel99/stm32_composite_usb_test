@@ -1,3 +1,6 @@
 [submodule "vendor/logging"]
 	path = vendor/logging
 	url = https://github.com/smartel99/embedded_logger
+[submodule "vendor/cmbacktrace"]
+	path = vendor/cmbacktrace
+	url = git@github.com:smartel99/CmBacktrace.git

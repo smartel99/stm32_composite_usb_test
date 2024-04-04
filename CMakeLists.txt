@@ -27,6 +27,7 @@ add_link_options(-mfloat-abi=hard -mfpu=fpv4-sp-d16)
 add_compile_options(-mcpu=cortex-m4 -mthumb -mthumb-interwork)
 add_compile_options(-ffunction-sections -fdata-sections -fno-common -fmessage-length=0)
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wextra -pedantic-errors -Wno-unused-function -Wno-unused-parameter -Wno-unknown-pragmas")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-register")
 
 # Enable assembler files preprocessing
 add_compile_options($<$<COMPILE_LANGUAGE:ASM>:-x$<SEMICOLON>assembler-with-cpp>)
@@ -36,7 +37,7 @@ add_compile_options(-fdata-sections)
 add_compile_options(-ffunction-sections)
 add_compile_options(-fmessage-length=0)
 add_compile_options(-fno-common)
-#add_compile_options(-fno-exceptions)
+add_compile_options(-fno-exceptions)
 add_compile_options(-Wno-psabi)
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fno-enforce-eh-specs")
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fno-use-cxa-atexit")
@@ -84,6 +85,7 @@ include_directories(
         ${SRC_DIR}/usb_composite/target
         ${SRC_DIR}/usb_composite/middlewares/st/class/dcdc/inc
         ${SRC_DIR}/vendor
+        ${SRC_DIR}/vendor/cmbacktrace/cm_backtrace
 )
 
 add_definitions(-DDEBUG -DUSE_HAL_DRIVER -DSTM32G473xx -DSTM32_THREAD_SAFE_STRATEGY=4)
@@ -94,9 +96,22 @@ file(GLOB_RECURSE SOURCES
         "${SRC_DIR}/g473/Middlewares/*.*"
         "${SRC_DIR}/g473/Drivers/*.*"
         "${SRC_DIR}/cep/*.*"
-        "${SRC_DIR}/vendor/*.*"
+        "${SRC_DIR}/vendor/logging/*.*"
+        "${SRC_DIR}/vendor/cmbacktrace/cm_backtrace/*.c"
+        "${SRC_DIR}/vendor/cmbacktrace/cm_backtrace/fault_handler/gcc/cmb_fault.S"
         "${SRC_DIR}/usb_composite/*.*"
 )
+
+# Add cm_backtrace utility functions to FreeRTOS's task.c, if needed.
+file(STRINGS ${SRC_DIR}/g473/Middlewares/Third_Party/FreeRTOS/Source/tasks.c already_cat REGEX "Support For CmBacktrace")
+if (already_cat STREQUAL "")
+    message(STATUS "Appending CmBacktrace functions to FreeRTOS/tasks.c")
+    file(READ ${SRC_DIR}/vendor/cmbacktrace/freertos_task.c.template template_content)
+    file(APPEND ${SRC_DIR}/g473/Middlewares/Third_Party/FreeRTOS/Source/tasks.c "${template_content}")
+else()
+    message(STATUS "No need to add CmBacktrace functions to FreeRTOS/tasks.c!")
+endif ()
+
 
 set(LINKER_SCRIPT ${SRC_DIR}/g473/STM32G473QETX_FLASH.ld)
 

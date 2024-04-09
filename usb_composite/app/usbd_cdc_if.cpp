@@ -69,10 +69,7 @@ extern "C" {
  */
 
 /* USER CODE BEGIN PRIVATE_DEFINES */
-/* Define size for the receive and transmit buffer over CDC */
-/* It's up to user to redefine and/or remove those define */
-#define APP_RX_DATA_SIZE 2048
-#define APP_TX_DATA_SIZE 2048
+
 /* USER CODE END PRIVATE_DEFINES */
 
 /**
@@ -96,17 +93,11 @@ extern "C" {
  * @brief Private variables.
  * @{
  */
-/* Create buffer for reception and transmission           */
-/* It's up to user to redefine and/or remove those define */
-/** Received data over USB are stored in this buffer      */
-uint8_t g_usbRxBuffer[APP_RX_DATA_SIZE];
 
-/** Data to send over USB CDC are stored in this buffer   */
-uint8_t g_usbTxBuffer[APP_TX_DATA_SIZE];
 
 /* USER CODE BEGIN PRIVATE_VARIABLES */
-const char*                     g_usbTag = "USB";    // Not static so that another TU can set the USB's loggers sink(s).
-static constexpr Logging::Level s_level  = Logging::Level::debug;
+const char* g_usbFrasyTag = "USB_FRASY";    // Not static so that another TU can set the USB's loggers sink(s).
+const char* g_usbDebugTag = "USB_DEBUG";    // Not static so that another TU can set the USB's loggers sink(s).
 /* USER CODE END PRIVATE_VARIABLES */
 
 /**
@@ -139,7 +130,53 @@ static int8_t cdcControlFs(USBD_CDC_HandleTypeDef* cdc, uint8_t cmd, uint8_t* pb
 static int8_t cdcReceiveFs(USBD_CDC_HandleTypeDef* cdc, uint8_t* pbuf, uint32_t* len);
 
 /* USER CODE BEGIN PRIVATE_FUNCTIONS_DECLARATION */
+struct CDC_DeviceInfo {
+    USBD_CDC_HandleTypeDef* handle = nullptr;
+    const char*             logTag = nullptr;
+    Logging::Level          logLevel;
+    uint8_t*                txBuffer     = nullptr;
+    size_t                  txBufferSize = 0;
+    uint8_t*                writeCursor  = nullptr;
+
+    uint8_t* rxBuffer     = nullptr;
+    size_t   rxBufferSize = 0;
+
+    size_t   lastFlushed        = 0;
+    uint32_t lastTxCompleteTime = 0;
+
+    CDC_onReceive_t onReceive   = [](CDC_DeviceInfo*, void*, const uint8_t*, size_t) {};
+    void*           onReceiveUD = nullptr;
+};
 namespace {
+
+constexpr Logging::Level s_Frasylevel       = Logging::Level::debug;
+constexpr Logging::Level s_Debuglevel       = Logging::Level::debug;
+constexpr size_t         s_autoFlushAfterMs = 100;
+
+/* Define size for the receive and transmit buffer over CDC */
+/* It's up to user to redefine and/or remove those define */
+constexpr size_t s_frasyRxDataSize = 512;
+constexpr size_t s_frasyTxDataSize = 512;
+constexpr size_t s_debugRxDataSize = 512;
+constexpr size_t s_debugTxDataSize = 1536;
+
+/* Create buffer for reception and transmission           */
+/* It's up to user to redefine and/or remove those define */
+/** Received data over USB are stored in this buffer      */
+uint8_t g_usbFrasyRxBuffer[s_frasyRxDataSize];
+uint8_t g_usbDebugRxBuffer[s_debugRxDataSize];
+
+/** Data to send over USB CDC are stored in this buffer   */
+uint8_t g_usbFrasyTxBuffer[s_frasyTxDataSize];
+uint8_t g_usbDebugTxBuffer[s_debugTxDataSize];
+
+CDC_DeviceInfo& deviceFromCdc(USBD_CDC_HandleTypeDef* handle)
+{
+    if (handle == g_usbFrasy.handle) { return g_usbFrasy; }
+    if (handle == g_usbDebug.handle) { return g_usbDebug; }
+    configASSERT(false && "Invalid CDC handle!");
+}
+
 constexpr const char* cdcCmdToStr(uint8_t cmd)
 {
     switch (cmd) {
@@ -189,6 +226,28 @@ constexpr const char* parityToStr(uint8_t parity)
     }
 }
 }    // namespace
+
+CDC_DeviceInfo g_usbFrasy {
+  .handle       = &((USBD_DCDC_HandleTypeDef*)hUsbDeviceFS.pClassData)->frasyCdc,
+  .logTag       = g_usbFrasyTag,
+  .logLevel     = Logging::Level::info,
+  .txBuffer     = &g_usbFrasyTxBuffer[0],
+  .txBufferSize = s_frasyTxDataSize,
+  .writeCursor  = &g_usbFrasyTxBuffer[0],
+  .rxBuffer     = &g_usbFrasyRxBuffer[0],
+  .rxBufferSize = s_frasyRxDataSize,
+};
+
+CDC_DeviceInfo g_usbDebug {
+  .handle       = &((USBD_DCDC_HandleTypeDef*)hUsbDeviceFS.pClassData)->debugCdc,
+  .logTag       = g_usbDebugTag,
+  .logLevel     = Logging::Level::info,
+  .txBuffer     = &g_usbDebugTxBuffer[0],
+  .txBufferSize = s_debugTxDataSize,
+  .writeCursor  = &g_usbDebugTxBuffer[0],
+  .rxBuffer     = &g_usbDebugRxBuffer[0],
+  .rxBufferSize = s_debugRxDataSize,
+};
 /* USER CODE END PRIVATE_FUNCTIONS_DECLARATION */
 
 /**
@@ -206,11 +265,15 @@ static int8_t cdcInitFs(USBD_CDC_HandleTypeDef* cdc)
 {
     /* USER CODE BEGIN 3 */
     /* Set Application Buffers */
-    USBD_DCDC_SetTxBuffer(&hUsbDeviceFS, cdc, &g_usbTxBuffer[0], 0);
-    USBD_DCDC_SetRxBuffer(&hUsbDeviceFS, cdc, &g_usbRxBuffer[0]);
+    USBD_DCDC_HandleTypeDef* hcdc = (USBD_DCDC_HandleTypeDef*)hUsbDeviceFS.pClassData;
+    if (&hcdc->frasyCdc == cdc) { g_usbFrasy.handle = cdc; }
+    if (&hcdc->debugCdc == cdc) { g_usbDebug.handle = cdc; }
 
-    Logging::Logger::setLevel(g_usbTag, s_level);
-    LOGI(g_usbTag, "Initialized");
+    auto& device = deviceFromCdc(cdc);
+    USBD_DCDC_SetTxBuffer(&hUsbDeviceFS, cdc, &device.txBuffer[0], 0);
+    USBD_DCDC_SetRxBuffer(&hUsbDeviceFS, cdc, &device.rxBuffer[0]);
+    Logging::Logger::setLevel(device.logTag, device.logLevel);
+    LOGI(device.logTag, "Initialized endpoints");
 
     return (USBD_OK);
     /* USER CODE END 3 */
@@ -223,8 +286,10 @@ static int8_t cdcInitFs(USBD_CDC_HandleTypeDef* cdc)
 static int8_t cdcDeInitFs([[maybe_unused]] USBD_CDC_HandleTypeDef* cdc)
 {
     /* USER CODE BEGIN 4 */
-    LOGI(g_usbTag, "De-initialized");
-    Logging::Logger::clearLevel(g_usbTag);
+    auto& device  = deviceFromCdc(cdc);
+    device.handle = nullptr;
+    LOGI(device.logTag, "De-initialized");
+    Logging::Logger::clearLevel(device.logTag);
 
     return (USBD_OK);
     /* USER CODE END 4 */
@@ -240,6 +305,7 @@ static int8_t cdcDeInitFs([[maybe_unused]] USBD_CDC_HandleTypeDef* cdc)
 static int8_t cdcControlFs(USBD_CDC_HandleTypeDef* cdc, uint8_t cmd, uint8_t* pbuf, uint16_t length)
 {
     /* USER CODE BEGIN 5 */
+    auto& device = deviceFromCdc(cdc);
     switch (cmd) {
         case CDC_SEND_ENCAPSULATED_COMMAND: break;
         case CDC_GET_ENCAPSULATED_RESPONSE: break;
@@ -267,7 +333,7 @@ static int8_t cdcControlFs(USBD_CDC_HandleTypeDef* cdc, uint8_t cmd, uint8_t* pb
         case CDC_SET_LINE_CODING:
         case CDC_GET_LINE_CODING:
             configASSERT(length == 7);
-            LOGD(g_usbTag,
+            LOGD(device.logTag,
                  "%s line coding, baud: %d, stops: %s, parity: %s, bits: %d",
                  cmd == CDC_SET_LINE_CODING ? "Setting" : "Getting",
                  *reinterpret_cast<uint32_t*>(&pbuf[0]),
@@ -279,9 +345,6 @@ static int8_t cdcControlFs(USBD_CDC_HandleTypeDef* cdc, uint8_t cmd, uint8_t* pb
         case CDC_SEND_BREAK: break;
         default: break;
     }
-
-    LOGT(g_usbTag, "Received %d bytes on control: (%#02x) %s", length, cmd, cdcCmdToStr(cmd));
-    LOG_BUFFER_HEXDUMP_LEVEL(g_usbTag, Logging::Level::trace, pbuf, length);
 
     return (USBD_OK);
     /* USER CODE END 5 */
@@ -304,25 +367,28 @@ static int8_t cdcControlFs(USBD_CDC_HandleTypeDef* cdc, uint8_t cmd, uint8_t* pb
 static int8_t cdcReceiveFs(USBD_CDC_HandleTypeDef* cdc, uint8_t* pbuf, uint32_t* len)
 {
     /* USER CODE BEGIN 6 */
-    USBD_DCDC_HandleTypeDef* hcdc = (USBD_DCDC_HandleTypeDef*)hUsbDeviceFS.pClassData;
-    if (&hcdc->frasyCdc == cdc) { CDC_Transmit_FS(&hcdc->frasyCdc, pbuf, *len); }
-    if (&hcdc->debugCdc == cdc) { CDC_Transmit_FS(&hcdc->debugCdc, pbuf, *len); }
+    //    USBD_DCDC_HandleTypeDef* hcdc = (USBD_DCDC_HandleTypeDef*)hUsbDeviceFS.pClassData;
+    //    if (&hcdc->frasyCdc == cdc) { CDC_Transmit_FS(&hcdc->frasyCdc, pbuf, *len); }
+    //    if (&hcdc->debugCdc == cdc) { CDC_Transmit_FS(&hcdc->debugCdc, pbuf, *len); }
 
-    if (auto status = USBD_DCDC_SetRxBuffer(&hUsbDeviceFS, cdc, &pbuf[0]); status != USBD_OK) {
-        LOGE(g_usbTag,
+    auto& device = deviceFromCdc(cdc);
+    device.onReceive(&device, device.onReceiveUD, pbuf, *len);
+
+    if (auto status = USBD_DCDC_SetRxBuffer(&hUsbDeviceFS, device.handle, &device.rxBuffer[0]); status != USBD_OK) {
+        LOGE(device.logTag,
              "Unable to set rx buffer: (%#02x) %s",
              status,
              usbStatusToStr(static_cast<USBD_StatusTypeDef>(status)));
     }
-    if (auto status = USBD_DCDC_ReceivePacket(&hUsbDeviceFS, cdc); status != USBD_OK) {
-        LOGE(g_usbTag,
+    if (auto status = USBD_DCDC_ReceivePacket(&hUsbDeviceFS, device.handle); status != USBD_OK) {
+        LOGE(device.logTag,
              "Unable to receive packet: (%#02x) %s",
              status,
              usbStatusToStr(static_cast<USBD_StatusTypeDef>(status)));
     }
 
-    LOGD(g_usbTag, "Received %d bytes on %s's CDC", *len, cdc == &hcdc->frasyCdc ? "Frasy" : "Debug");
-    LOG_BUFFER_HEXDUMP_LEVEL(g_usbTag, Logging::Level::trace, pbuf, *len);
+    LOGD(device.logTag, "Received %d bytes", *len);
+    LOG_BUFFER_HEXDUMP_LEVEL(g_usbDebugTag, Logging::Level::trace, pbuf, *len);
 
     return (USBD_OK);
     /* USER CODE END 6 */
@@ -335,28 +401,101 @@ static int8_t cdcReceiveFs(USBD_CDC_HandleTypeDef* cdc, uint8_t* pbuf, uint32_t*
  *         @note
  *
  *
- * @param  Buf: Buffer of data to be sent
- * @param  Len: Number of data to be sent (in bytes)
+ * @param  buf: Buffer of data to be sent
+ * @param  len: Number of data to be sent (in bytes)
  * @retval USBD_OK if all operations are OK else USBD_FAIL or USBD_BUSY
  */
-uint8_t CDC_Transmit_FS(USBD_CDC_HandleTypeDef* cdc, uint8_t* Buf, uint16_t Len)
+uint8_t CDC_Transmit_FS(CDC_DeviceInfo* device, const uint8_t* buf, uint16_t len)
 {
     uint8_t result = USBD_OK;
     /* USER CODE BEGIN 7 */
-    if (cdc->TxState != 0) { return USBD_BUSY; }
-    USBD_DCDC_SetTxBuffer(&hUsbDeviceFS, cdc, Buf, Len);
-    result = USBD_DCDC_TransmitPacket(&hUsbDeviceFS, cdc);
+    if (device->handle->TxState != 0) { return USBD_BUSY; }
+    USBD_DCDC_SetTxBuffer(&hUsbDeviceFS, device->handle, const_cast<uint8_t*>(buf), len);
+    result = USBD_DCDC_TransmitPacket(&hUsbDeviceFS, device->handle);
     if (result != USBD_OK) {
-        LOGE(g_usbTag,
+        LOGE(device->logTag,
              "Unable to transmit packet: (%#02x) %s",
              result,
              usbStatusToStr(static_cast<USBD_StatusTypeDef>(result)));
     }
+    device->lastFlushed = HAL_GetTick();
     /* USER CODE END 7 */
     return result;
 }
 
 /* USER CODE BEGIN PRIVATE_FUNCTIONS_IMPLEMENTATION */
+void CDC_InitLoggers(void)
+{
+    Logging::Logger::setLevel(g_usbFrasy.logTag, g_usbFrasy.logLevel);
+    Logging::Logger::setLevel(g_usbDebug.logTag, g_usbDebug.logLevel);
+}
+
+void CDC_SetOnReceived(CDC_DeviceInfo* device, CDC_onReceive_t onReceive, void* userData)
+{
+    configASSERT(device != nullptr);
+    configASSERT(onReceive != nullptr);
+
+    device->onReceive   = onReceive;
+    device->onReceiveUD = userData;
+}
+
+bool CDC_IsBusy(CDC_DeviceInfo* device)
+{
+    return (device->handle->TxState != 0);
+}
+
+size_t CDC_GetRxBufferSize(CDC_DeviceInfo* device)
+{
+    return device->rxBufferSize;
+}
+
+size_t CDC_GetTxBufferSize(CDC_DeviceInfo* device)
+{
+    return device->txBufferSize;
+}
+
+size_t CDC_GetTxBufferTakenSize(CDC_DeviceInfo* device)
+{
+    return std::distance(&device->txBuffer[0], device->writeCursor);
+}
+
+size_t CDC_GetTxBufferAvailableSize(CDC_DeviceInfo* device)
+{
+    return device->txBufferSize - CDC_GetTxBufferTakenSize(device);
+}
+
+size_t CDC_Queue(CDC_DeviceInfo* device, const uint8_t* buf, size_t len)
+{
+    if (CDC_IsBusy(device) || CDC_GetTxBufferAvailableSize(device) < len) {
+        // not enough room, send the buffer.
+        CDC_SendQueue(device);
+        return 0;
+    }
+
+    device->writeCursor = std::copy(buf, buf + len, device->writeCursor);
+
+    if (HAL_GetTick() >= device->lastFlushed + s_autoFlushAfterMs) {
+        // We haven't flushed in a while...
+        CDC_SendQueue(device);
+    }
+
+    return len;
+}
+
+uint8_t CDC_SendQueue(CDC_DeviceInfo* device)
+{
+    auto res = CDC_Transmit_FS(device, &device->txBuffer[0], CDC_GetTxBufferTakenSize(device));
+    if (res == USBD_OK) { device->writeCursor = &device->txBuffer[0]; }
+    return res;
+}
+
+void CDCInternal_SetLastTxCompleteTimestamp(uint32_t timestamp, uint8_t endpoint)
+{
+    if (endpoint == 1) { g_usbFrasy.lastTxCompleteTime = timestamp; }
+    if (endpoint == 2) { g_usbDebug.lastTxCompleteTime = timestamp; }
+}
+
+
 #ifdef __cplusplus
 }
 #endif

@@ -25,6 +25,7 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
+#include "tim.h"
 #include <stdio.h>
 /* USER CODE END Includes */
 
@@ -71,14 +72,16 @@ void vApplicationStackOverflowHook(xTaskHandle xTask, signed char *pcTaskName);
 void vApplicationMallocFailedHook(void);
 
 /* USER CODE BEGIN 1 */
+uint32_t g_totalRuntime = 0;
 /* Functions needed when configGENERATE_RUN_TIME_STATS is on */
 __weak void configureTimerForRunTimeStats(void)
 {
+    HAL_TIM_Base_Start_IT(&htim7);
 }
 
 __weak unsigned long getRunTimeCounterValue(void)
 {
-    return 0;
+    return g_totalRuntime;
 }
 /* USER CODE END 1 */
 

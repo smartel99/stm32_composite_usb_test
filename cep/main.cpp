@@ -16,20 +16,22 @@
  */
 #include "g473/Core/Inc/main.h"
 
+#include "cli/cli.h"
 #include "cmsis_os.h"
+#include "fdcan.h"
 #include "gpio.h"
+#include "slcan/slcan.h"
+#include "tim.h"
 #include "usart.h"
 #include "usb_device.h"
 #include "usbd_cdc_if.h"
 
-#include <charconv>
 #include <cm_backtrace.h>
-#include <exception>
 #include <logging/logger.h>
 #include <logging/proxy_sink.h>
 #include <logging/uart_sink.h>
-#include <map>
 
+#include <exception>
 #include <new>
 
 
@@ -40,42 +42,24 @@ extern "C" USBD_HandleTypeDef hUsbDeviceFS;
 
 extern "C" void StartDefaultTask(void* args)
 {
-    for (;;) {
-        USBD_DCDC_HandleTypeDef* hcdc = (USBD_DCDC_HandleTypeDef*)hUsbDeviceFS.pClassData;
-        //        ROOT_LOGI("Ping");
-        if (auto res = CDC_Transmit_FS(&hcdc->frasyCdc, (uint8_t*)"hewwo :3\n", 9); res != USBD_OK) {
-            //            ROOT_LOGW("Unable to send on CDC1: %02x", res);
-        }
-        if (auto res = CDC_Transmit_FS(&hcdc->debugCdc, (uint8_t*)"not hewwo >:3\n", 14); res != USBD_OK) {
-            //            ROOT_LOGW("Unable to send on CDC2: %02x", res);
-        }
-        osDelay(1000);
+    CLI cli {&g_usbDebug};
+
+    CDC_SetOnReceived(
+      &g_usbFrasy,
+      [](CDC_DeviceInfo* dev, void* ud, const uint8_t* data, size_t len) {
+          LOGD("SlCan", "Received %d bytes", len);
+          LOG_BUFFER_HEXDUMP("SlCan", data, len);
+          SlCan::Packet packet{data,len};
+          LOGI("SlCan", "Command received: %s", SlCan::commandToStr(packet.command));
+      },
+      nullptr);
+
+    volatile bool t = true;
+    while (t) {
+        HAL_GPIO_TogglePin(GPIO_OUT_LED_YELLOW_GPIO_Port, GPIO_OUT_LED_YELLOW_Pin);
+        osDelay(500);
     }
     std::unreachable();
-}
-
-unsigned int g_blockedOnStreamBuffRxCount = 0;
-unsigned int g_blockedOnStreamBuffTxCount = 0;
-struct SpamTaskArgs {
-    Logging::Level level;
-    const char*    tag;
-};
-
-[[noreturn]] void SpamTask(void* args)
-{
-    SpamTaskArgs spamTaskArgs = *reinterpret_cast<SpamTaskArgs*>(args);
-    for (;;) {
-        LOGGER_LOG_HELPER(spamTaskArgs.tag,
-                          spamTaskArgs.level,
-                          "xStreamBufferSend: %d, xStreamBufferReceive: %d",
-                          g_blockedOnStreamBuffTxCount,
-                          g_blockedOnStreamBuffRxCount);
-
-        if(HAL_GetTick() > 333)
-        {
-            __asm("bkpt 1");
-        }
-    }
 }
 
 extern "C" [[gnu::used]] int _write([[maybe_unused]] int file, char* ptr, int len)
@@ -119,26 +103,18 @@ int main()
     /* Initialize all configured peripherals */
     MX_GPIO_Init();
     MX_USART1_UART_Init();
+    MX_FDCAN1_Init();
+    MX_TIM7_Init();
+    MX_TIM16_Init();
     MX_USB_Device_Init();
     /* USER CODE BEGIN 2 */
 
     Logging::Logger::setGetTime(&HAL_GetTick);
     auto* uartSink = Logging::Logger::addSink<Logging::MtUartSink>(&huart1);
-    Logging::Logger::addSink<Logging::ProxySink>(g_usbTag, uartSink);
+    //    Logging::Logger::addSink<Logging::MtUsbSink>(&g_usbDebug);
+    Logging::Logger::addSink<Logging::ProxySink>(g_usbDebugTag, uartSink);
 
     ROOT_LOGI("Logger Initialized.");
-
-    SpamTaskArgs tasks[] = {
-      {Logging::Level::trace, "t"},
-      {Logging::Level::debug, "d"},
-      {Logging::Level::info, "i"},
-      {Logging::Level::warning, "w"},
-      {Logging::Level::error, "e"},
-    };
-
-    for (auto&& task : tasks) {
-        xTaskCreate(&SpamTask, task.tag, configMINIMAL_STACK_SIZE * 3, &task, 7, nullptr);
-    }
 
     /* USER CODE END 2 */
 

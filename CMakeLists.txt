@@ -78,28 +78,27 @@ include_directories(
         ${SRC_DIR}/g473/Drivers/CMSIS/Device/ST/STM32G4xx/Include
         ${SRC_DIR}/g473/Drivers/CMSIS/Include
         ${SRC_DIR}/g473/Core/ThreadSafe
-        ${SRC_DIR}/g473/CANopen/App
-        ${SRC_DIR}/g473/Middlewares/Third_Party/emotas_CANopen/emotas/Config
-        ${SRC_DIR}/g473/Middlewares/Third_Party/emotas_CANopen/emotas/Library/inc
         ${SRC_DIR}/usb_composite/app
         ${SRC_DIR}/usb_composite/target
         ${SRC_DIR}/usb_composite/middlewares/st/class/dcdc/inc
         ${SRC_DIR}/vendor
         ${SRC_DIR}/vendor/cmbacktrace/cm_backtrace
+        ${SRC_DIR}/vendor/FreeRTOS-Plus-CLI
 )
 
 add_definitions(-DDEBUG -DUSE_HAL_DRIVER -DSTM32G473xx -DSTM32_THREAD_SAFE_STRATEGY=4)
+add_definitions(-DconfigCOMMAND_INT_MAX_OUTPUT_SIZE=256)
 
 file(GLOB_RECURSE SOURCES
-        "${SRC_DIR}/g473/CANopen/*.*"
         "${SRC_DIR}/g473/Core/*.*"
         "${SRC_DIR}/g473/Middlewares/*.*"
         "${SRC_DIR}/g473/Drivers/*.*"
         "${SRC_DIR}/cep/*.*"
+        "${SRC_DIR}/usb_composite/*.*"
         "${SRC_DIR}/vendor/logging/*.*"
         "${SRC_DIR}/vendor/cmbacktrace/cm_backtrace/*.c"
         "${SRC_DIR}/vendor/cmbacktrace/cm_backtrace/fault_handler/gcc/cmb_fault.S"
-        "${SRC_DIR}/usb_composite/*.*"
+        "${SRC_DIR}/vendor/FreeRTOS-Plus-CLI/FreeRTOS_CLI.c"
 )
 
 # Add cm_backtrace utility functions to FreeRTOS's task.c, if needed.
@@ -108,7 +107,7 @@ if (already_cat STREQUAL "")
     message(STATUS "Appending CmBacktrace functions to FreeRTOS/tasks.c")
     file(READ ${SRC_DIR}/vendor/cmbacktrace/freertos_task.c.template template_content)
     file(APPEND ${SRC_DIR}/g473/Middlewares/Third_Party/FreeRTOS/Source/tasks.c "${template_content}")
-else()
+else ()
     message(STATUS "No need to add CmBacktrace functions to FreeRTOS/tasks.c!")
 endif ()
 

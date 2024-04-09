@@ -940,7 +940,7 @@ static uint8_t USBD_DCDC_DataOut(USBD_HandleTypeDef* pdev, uint8_t epnum)
     /* Get the received data length */
     uint32_t rxSize = USBD_LL_GetRxDataSize(pdev, epnum);
 
-    /* USB data will be immediately processed, this allow next USB traffic being
+    /* USB data will be immediately processed, this allows next USB traffic being
     NAKed till the end of the application Xfer */
     if (pdev->pClassData != NULL) {
         USBD_CDC_HandleTypeDef* cdc = &hDCDC->frasyCdc;

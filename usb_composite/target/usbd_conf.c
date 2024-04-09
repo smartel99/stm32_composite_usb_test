@@ -28,7 +28,7 @@
 #include "usbd_dcdc.h"
 
 /* USER CODE BEGIN Includes */
-
+#include "usbd_cdc_if.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -172,6 +172,8 @@ void HAL_PCD_DataOutStageCallback(PCD_HandleTypeDef *hpcd, uint8_t epnum)
   /* USER CODE END HAL_PCD_DataOutStageCallback_PostTreatment */
 }
 
+
+
 /**
   * @brief  Data In stage callback.
   * @param  hpcd: PCD handle
@@ -185,7 +187,7 @@ void HAL_PCD_DataInStageCallback(PCD_HandleTypeDef *hpcd, uint8_t epnum)
 #endif /* USE_HAL_PCD_REGISTER_CALLBACKS */
 {
   /* USER CODE BEGIN HAL_PCD_DataInStageCallback_PreTreatment */
-
+  CDCInternal_SetLastTxCompleteTimestamp(HAL_GetTick(), epnum);
   /* USER CODE END HAL_PCD_DataInStageCallback_PreTreatment */
   USBD_LL_DataInStage((USBD_HandleTypeDef*)hpcd->pData, epnum, hpcd->IN_ep[epnum].xfer_buff);
   /* USER CODE BEGIN HAL_PCD_DataInStageCallback_PostTreatment  */

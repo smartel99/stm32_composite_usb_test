@@ -67,7 +67,7 @@ extern USBD_DescriptorsTypeDef DCDC_Desc;
 void MX_USB_Device_Init(void)
 {
   /* USER CODE BEGIN USB_Device_Init_PreTreatment */
-
+  CDC_InitLoggers();
   /* USER CODE END USB_Device_Init_PreTreatment */
 
   /* Init Device Library, add supported class and start the library. */

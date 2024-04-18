@@ -71,7 +71,7 @@ extern unsigned long getRunTimeCounterValue(void);
 #define configCPU_CLOCK_HZ                       ( SystemCoreClock )
 #define configTICK_RATE_HZ                       ((TickType_t)1000)
 #define configMAX_PRIORITIES                     ( 56 )
-#define configMINIMAL_STACK_SIZE                 ((uint16_t)128)
+#define configMINIMAL_STACK_SIZE                 ((uint16_t)256)
 #define configTOTAL_HEAP_SIZE                    ((size_t)65536)
 #define configMAX_TASK_NAME_LEN                  ( 16 )
 #define configGENERATE_RUN_TIME_STATS            1
@@ -80,7 +80,7 @@ extern unsigned long getRunTimeCounterValue(void);
 #define configUSE_16_BIT_TICKS                   0
 #define configUSE_MUTEXES                        1
 #define configQUEUE_REGISTRY_SIZE                8
-#define configCHECK_FOR_STACK_OVERFLOW           1
+#define configCHECK_FOR_STACK_OVERFLOW           2
 #define configUSE_RECURSIVE_MUTEXES              1
 #define configUSE_MALLOC_FAILED_HOOK             1
 #define configUSE_COUNTING_SEMAPHORES            1
@@ -101,7 +101,7 @@ extern unsigned long getRunTimeCounterValue(void);
 #define configUSE_TIMERS                         1
 #define configTIMER_TASK_PRIORITY                ( 2 )
 #define configTIMER_QUEUE_LENGTH                 10
-#define configTIMER_TASK_STACK_DEPTH             256
+#define configTIMER_TASK_STACK_DEPTH             512
 
 /* The following flag must be enabled only when using newlib */
 #define configUSE_NEWLIB_REENTRANT          1
@@ -165,10 +165,12 @@ See http://www.FreeRTOS.org/RTOS-Cortex-M3-M4.html. */
 header file. */
 /* USER CODE BEGIN 1 */
 void assert_failed(uint8_t* file, uint32_t line);
+#include <stdio.h>
 #define configASSERT(x)                                                                                                \
     do {                                                                                                               \
         if ((x) == 0) {                                                                                                \
             portDISABLE_INTERRUPTS();                                                                                  \
+            printf("\n\n\rAssertion failed: %s\n\r", #x);                                                              \
             assert_failed((uint8_t*)__FILE__, __LINE__);                                                               \
             for (;;)                                                                                                   \
                 ;                                                                                                      \
@@ -195,8 +197,9 @@ standard names. */
 /* Section where parameter definitions can be added (for instance, to override default ones in FreeRTOS.h) */
 extern unsigned int g_lastRequestedMallocSize;
 // #define traceFREE(pvAddress, uiSize) printf("vPortFree(): addr: %p, size: %u\n", pvAddress, uiSize)
-#define traceMALLOC(pvAddress, uiSize) g_lastRequestedMallocSize = uiSize
+#define traceMALLOC(pvAddress, uiSize)            g_lastRequestedMallocSize = uiSize
 
+//#define configUSE_LIST_DATA_INTEGRITY_CHECK_BYTES 1
 /* USER CODE END Defines */
 
 #endif /* FREERTOS_CONFIG_H */

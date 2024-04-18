@@ -51,7 +51,6 @@ void Error_Handler(void);
 
 /* USER CODE BEGIN PFP */
 /* Private function prototypes -----------------------------------------------*/
-
 /* USER CODE END PFP */
 
 /* Private functions ---------------------------------------------------------*/
@@ -143,7 +142,6 @@ void HAL_PCD_SetupStageCallback(PCD_HandleTypeDef *hpcd)
 #endif /* USE_HAL_PCD_REGISTER_CALLBACKS */
 {
   /* USER CODE BEGIN HAL_PCD_SetupStageCallback_PreTreatment */
-
   /* USER CODE END  HAL_PCD_SetupStageCallback_PreTreatment */
   USBD_LL_SetupStage((USBD_HandleTypeDef*)hpcd->pData, (uint8_t *)hpcd->Setup);
   /* USER CODE BEGIN HAL_PCD_SetupStageCallback_PostTreatment */
@@ -207,7 +205,7 @@ void HAL_PCD_SOFCallback(PCD_HandleTypeDef *hpcd)
 #endif /* USE_HAL_PCD_REGISTER_CALLBACKS */
 {
   /* USER CODE BEGIN HAL_PCD_SOFCallback_PreTreatment */
-
+  // TODO potentially could be used as an activity marker?
   /* USER CODE END HAL_PCD_SOFCallback_PreTreatment */
   USBD_LL_SOF((USBD_HandleTypeDef*)hpcd->pData);
   /* USER CODE BEGIN HAL_PCD_SOFCallback_PostTreatment */
@@ -227,7 +225,6 @@ void HAL_PCD_ResetCallback(PCD_HandleTypeDef *hpcd)
 #endif /* USE_HAL_PCD_REGISTER_CALLBACKS */
 {
   /* USER CODE BEGIN HAL_PCD_ResetCallback_PreTreatment */
-
   /* USER CODE END HAL_PCD_ResetCallback_PreTreatment */
   USBD_SpeedTypeDef speed = USBD_SPEED_FULL;
 
@@ -258,12 +255,13 @@ void HAL_PCD_SuspendCallback(PCD_HandleTypeDef *hpcd)
 #endif /* USE_HAL_PCD_REGISTER_CALLBACKS */
 {
   /* USER CODE BEGIN HAL_PCD_SuspendCallback_PreTreatment */
-
   /* USER CODE END HAL_PCD_SuspendCallback_PreTreatment */
   /* Inform USB library that core enters in suspend Mode. */
   USBD_LL_Suspend((USBD_HandleTypeDef*)hpcd->pData);
   /* Enter in STOP mode. */
   /* USER CODE BEGIN 2 */
+  CDCInternal_SetConnectedState(&g_usbFrasy, false);
+  CDCInternal_SetConnectedState(&g_usbDebug, false);
   if (hpcd->Init.low_power_enable)
   {
     /* Set SLEEPDEEP bit and SleepOnExit of Cortex System Control Register. */
@@ -288,7 +286,6 @@ void HAL_PCD_ResumeCallback(PCD_HandleTypeDef *hpcd)
 #endif /* USE_HAL_PCD_REGISTER_CALLBACKS */
 {
   /* USER CODE BEGIN HAL_PCD_ResumeCallback_PreTreatment */
-
   /* USER CODE END HAL_PCD_ResumeCallback_PreTreatment */
 
   /* USER CODE BEGIN 3 */
@@ -298,6 +295,8 @@ void HAL_PCD_ResumeCallback(PCD_HandleTypeDef *hpcd)
     SCB->SCR &= (uint32_t)~((uint32_t)(SCB_SCR_SLEEPDEEP_Msk | SCB_SCR_SLEEPONEXIT_Msk));
     SystemClockConfig_Resume();
   }
+  CDCInternal_SetConnectedState(&g_usbFrasy, true);
+  CDCInternal_SetConnectedState(&g_usbDebug, true);
   /* USER CODE END 3 */
 
   USBD_LL_Resume((USBD_HandleTypeDef*)hpcd->pData);
@@ -319,7 +318,6 @@ void HAL_PCD_ISOOUTIncompleteCallback(PCD_HandleTypeDef *hpcd, uint8_t epnum)
 #endif /* USE_HAL_PCD_REGISTER_CALLBACKS */
 {
   /* USER CODE BEGIN HAL_PCD_ISOOUTIncompleteCallback_PreTreatment */
-
   /* USER CODE END HAL_PCD_ISOOUTIncompleteCallback_PreTreatment */
   USBD_LL_IsoOUTIncomplete((USBD_HandleTypeDef*)hpcd->pData, epnum);
   /* USER CODE BEGIN HAL_PCD_ISOOUTIncompleteCallback_PostTreatment */
@@ -340,7 +338,6 @@ void HAL_PCD_ISOINIncompleteCallback(PCD_HandleTypeDef *hpcd, uint8_t epnum)
 #endif /* USE_HAL_PCD_REGISTER_CALLBACKS */
 {
   /* USER CODE BEGIN HAL_PCD_ISOINIncompleteCallback_PreTreatment */
-
   /* USER CODE END HAL_PCD_ISOINIncompleteCallback_PreTreatment */
   USBD_LL_IsoINIncomplete((USBD_HandleTypeDef*)hpcd->pData, epnum);
   /* USER CODE BEGIN HAL_PCD_ISOINIncompleteCallback_PostTreatment */
@@ -360,7 +357,6 @@ void HAL_PCD_ConnectCallback(PCD_HandleTypeDef *hpcd)
 #endif /* USE_HAL_PCD_REGISTER_CALLBACKS */
 {
   /* USER CODE BEGIN HAL_PCD_ConnectCallback_PreTreatment */
-
   /* USER CODE END HAL_PCD_ConnectCallback_PreTreatment */
   USBD_LL_DevConnected((USBD_HandleTypeDef*)hpcd->pData);
   /* USER CODE BEGIN HAL_PCD_ConnectCallback_PostTreatment */
@@ -380,7 +376,6 @@ void HAL_PCD_DisconnectCallback(PCD_HandleTypeDef *hpcd)
 #endif /* USE_HAL_PCD_REGISTER_CALLBACKS */
 {
   /* USER CODE BEGIN HAL_PCD_DisconnectCallback_PreTreatment */
-
   /* USER CODE END HAL_PCD_DisconnectCallback_PreTreatment */
   USBD_LL_DevDisconnected((USBD_HandleTypeDef*)hpcd->pData);
   /* USER CODE BEGIN HAL_PCD_DisconnectCallback_PostTreatment */

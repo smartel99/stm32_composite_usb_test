@@ -74,7 +74,7 @@ typedef struct CDC_DeviceInfo CDC_DeviceInfo;
  * const uint8_t*: Pointer to the data.
  * size_t: Number of bytes received.
  */
-typedef void(*CDC_onReceive_t)(CDC_DeviceInfo*, void*, const uint8_t*, size_t);
+typedef void (*CDC_onReceive_t)(CDC_DeviceInfo*, void*, const uint8_t*, size_t);
 
 /* USER CODE END EXPORTED_TYPES */
 
@@ -119,12 +119,24 @@ extern CDC_DeviceInfo g_usbDebug;
  * @{
  */
 
+/**
+ * @brief  CDC_Transmit_FS
+ *         Data to send over USB IN endpoint are sent over CDC interface
+ *         through this function.
+ *         @note
+ *
+ *
+ * @param  buf: Buffer of data to be sent
+ * @param  len: Number of data to be sent (in bytes)
+ * @retval USBD_OK if all operations are OK else USBD_FAIL or USBD_BUSY
+ */
 uint8_t CDC_Transmit_FS(CDC_DeviceInfo* device, const uint8_t* buf, uint16_t len);
 
 /* USER CODE BEGIN EXPORTED_FUNCTIONS */
 void CDC_InitLoggers(void);
 void CDC_SetOnReceived(CDC_DeviceInfo* device, CDC_onReceive_t onReceive, void* userData);
 
+bool CDC_IsConnected(CDC_DeviceInfo* device);
 bool CDC_IsBusy(CDC_DeviceInfo* device);
 
 size_t CDC_GetRxBufferSize(CDC_DeviceInfo* device);
@@ -152,6 +164,18 @@ uint8_t CDC_SendQueue(CDC_DeviceInfo* device);
 
 
 void CDCInternal_SetLastTxCompleteTimestamp(uint32_t timestamp, uint8_t endpoint);
+void CDCInternal_SetConnectedState(CDC_DeviceInfo* device, bool state);
+
+inline const char* usbdResToStr(USBD_StatusTypeDef res)
+{
+    switch (res) {
+        case USBD_OK: return "OK";
+        case USBD_BUSY: return "BUSY";
+        case USBD_EMEM: return "EMEM";
+        case USBD_FAIL: return "FAIL";
+        default: return "Unknown";
+    }
+}
 /* USER CODE END EXPORTED_FUNCTIONS */
 
 /**

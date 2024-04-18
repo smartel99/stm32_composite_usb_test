@@ -141,24 +141,45 @@ struct CDC_DeviceInfo {
     uint8_t* rxBuffer     = nullptr;
     size_t   rxBufferSize = 0;
 
-    size_t   lastFlushed        = 0;
+    size_t   lastFlushedTime    = 0;
     uint32_t lastTxCompleteTime = 0;
 
     CDC_onReceive_t onReceive   = [](CDC_DeviceInfo*, void*, const uint8_t*, size_t) {};
     void*           onReceiveUD = nullptr;
-};
-namespace {
 
+    bool connected = false;
+
+    /**
+     * We can't know for sure (through the existing API, afaik) whether an endpoint is being read or not, we
+     * can only make assumptions:
+     *  <br>- If we've never flushed, assume we're not stale
+     *  <br>- If the last TxCompleteTime is more recent than the lastFlushedTime, we definitely aren't stale
+     *  <br>- Since the host is supposed to poll the device every milliseconds, if the last TxCompleteTime is more than
+     * 5ms older than the lastFlushedTTime, we can maybe assume we're stale?
+     *
+     * @returns True if we can assume that the Tx endpoint is stale
+     * @returns False if we can assume that the Tx endpoint is not stale
+     */
+    [[nodiscard]] bool isTxStale() const
+    {
+        if (lastFlushedTime == 0) { return false; }
+        if (lastTxCompleteTime >= lastFlushedTime) { return false; }
+        if ((lastFlushedTime - lastTxCompleteTime) < 5) { return false; }
+        return true;
+    }
+};
+
+namespace {
 constexpr Logging::Level s_Frasylevel       = Logging::Level::debug;
 constexpr Logging::Level s_Debuglevel       = Logging::Level::debug;
-constexpr size_t         s_autoFlushAfterMs = 100;
+constexpr size_t         s_autoFlushAfterMs = 5;
 
 /* Define size for the receive and transmit buffer over CDC */
 /* It's up to user to redefine and/or remove those define */
 constexpr size_t s_frasyRxDataSize = 512;
-constexpr size_t s_frasyTxDataSize = 512;
+constexpr size_t s_frasyTxDataSize = 2048;
 constexpr size_t s_debugRxDataSize = 512;
-constexpr size_t s_debugTxDataSize = 1536;
+constexpr size_t s_debugTxDataSize = 1024;
 
 /* Create buffer for reception and transmission           */
 /* It's up to user to redefine and/or remove those define */
@@ -286,10 +307,11 @@ static int8_t cdcInitFs(USBD_CDC_HandleTypeDef* cdc)
 static int8_t cdcDeInitFs([[maybe_unused]] USBD_CDC_HandleTypeDef* cdc)
 {
     /* USER CODE BEGIN 4 */
-    auto& device  = deviceFromCdc(cdc);
-    device.handle = nullptr;
+    auto& device              = deviceFromCdc(cdc);
+    device.handle             = nullptr;
+    device.lastFlushedTime    = 0;
+    device.lastTxCompleteTime = 0;
     LOGI(device.logTag, "De-initialized");
-    Logging::Logger::clearLevel(device.logTag);
 
     return (USBD_OK);
     /* USER CODE END 4 */
@@ -418,7 +440,7 @@ uint8_t CDC_Transmit_FS(CDC_DeviceInfo* device, const uint8_t* buf, uint16_t len
              result,
              usbStatusToStr(static_cast<USBD_StatusTypeDef>(result)));
     }
-    device->lastFlushed = HAL_GetTick();
+    device->lastFlushedTime = HAL_GetTick();
     /* USER CODE END 7 */
     return result;
 }
@@ -439,9 +461,14 @@ void CDC_SetOnReceived(CDC_DeviceInfo* device, CDC_onReceive_t onReceive, void* 
     device->onReceiveUD = userData;
 }
 
+bool CDC_IsConnected(CDC_DeviceInfo* device)
+{
+    return device->handle != nullptr && device->connected && !device->isTxStale();
+}
+
 bool CDC_IsBusy(CDC_DeviceInfo* device)
 {
-    return (device->handle->TxState != 0);
+    return device->handle != nullptr && device->handle->TxState != 0;
 }
 
 size_t CDC_GetRxBufferSize(CDC_DeviceInfo* device)
@@ -474,8 +501,8 @@ size_t CDC_Queue(CDC_DeviceInfo* device, const uint8_t* buf, size_t len)
 
     device->writeCursor = std::copy(buf, buf + len, device->writeCursor);
 
-    if (HAL_GetTick() >= device->lastFlushed + s_autoFlushAfterMs) {
-        // We haven't flushed in a while...
+    // We haven't flushed in a while, or we've just never flushed.
+    if ((HAL_GetTick() >= device->lastFlushedTime + s_autoFlushAfterMs) || device->lastFlushedTime == 0) {
         CDC_SendQueue(device);
     }
 
@@ -495,6 +522,10 @@ void CDCInternal_SetLastTxCompleteTimestamp(uint32_t timestamp, uint8_t endpoint
     if (endpoint == 2) { g_usbDebug.lastTxCompleteTime = timestamp; }
 }
 
+void CDCInternal_SetConnectedState(CDC_DeviceInfo* device, bool state)
+{
+    device->connected = state;
+}
 
 #ifdef __cplusplus
 }

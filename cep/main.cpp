@@ -16,11 +16,12 @@
  */
 #include "g473/Core/Inc/main.h"
 
+#include "can_manager.h"
 #include "cli/cli.h"
 #include "cmsis_os.h"
 #include "fdcan.h"
 #include "gpio.h"
-#include "slcan/slcan.h"
+#include "rng.h"
 #include "tim.h"
 #include "usart.h"
 #include "usb_device.h"
@@ -33,6 +34,7 @@
 
 #include <exception>
 #include <new>
+#include <string>
 
 
 extern "C" void SystemClock_Config(void);
@@ -42,22 +44,58 @@ extern "C" USBD_HandleTypeDef hUsbDeviceFS;
 
 extern "C" void StartDefaultTask(void* args)
 {
-    CLI cli {&g_usbDebug};
+    Logging::Logger::setGetTime(&HAL_GetTick);
+    auto* uartSink = Logging::Logger::addSink<Logging::MtUartSink>(&huart1);
+    Logging::Logger::addSink<Logging::ProxySink>(g_usbDebugTag, uartSink);
 
-    CDC_SetOnReceived(
-      &g_usbFrasy,
-      [](CDC_DeviceInfo* dev, void* ud, const uint8_t* data, size_t len) {
-          LOGD("SlCan", "Received %d bytes", len);
-          LOG_BUFFER_HEXDUMP("SlCan", data, len);
-          SlCan::Packet packet{data,len};
-          LOGI("SlCan", "Command received: %s", SlCan::commandToStr(packet.command));
-      },
-      nullptr);
+    ROOT_LOGI("\n\n\n\rLogger Initialized.");
+    // Allow everything on CAN!
+    FDCAN_FilterTypeDef sFilterConfig;
+
+    /* Configure Rx filter */
+    sFilterConfig.IdType       = FDCAN_STANDARD_ID;
+    sFilterConfig.FilterIndex  = 0;
+    sFilterConfig.FilterType   = FDCAN_FILTER_MASK;
+    sFilterConfig.FilterConfig = FDCAN_FILTER_TO_RXFIFO0;
+    sFilterConfig.FilterID1    = 0;
+    sFilterConfig.FilterID2    = 0;
+    if (HAL_FDCAN_ConfigFilter(&hfdcan1, &sFilterConfig) != HAL_OK) { Error_Handler(); }
+
+    sFilterConfig.IdType      = FDCAN_EXTENDED_ID;
+    sFilterConfig.FilterIndex = 1;
+    if (HAL_FDCAN_ConfigFilter(&hfdcan1, &sFilterConfig) != HAL_OK) { Error_Handler(); }
+
+    if (HAL_FDCAN_ConfigGlobalFilter(
+          &hfdcan1, FDCAN_ACCEPT_IN_RX_FIFO0, FDCAN_ACCEPT_IN_RX_FIFO0, FDCAN_FILTER_REMOTE, FDCAN_FILTER_REMOTE) !=
+        HAL_OK) {
+        Error_Handler();
+    }
+
+    /* Start the FDCAN module */
+    if (HAL_FDCAN_Start(&hfdcan1) != HAL_OK) { Error_Handler(); }
+
+    if (HAL_FDCAN_ActivateNotification(&hfdcan1, FDCAN_IT_RX_FIFO0_NEW_MESSAGE, 0) != HAL_OK) { Error_Handler(); }
+
+    CLI cli {&g_usbDebug};
+    CanManager::init(&g_usbFrasy);
+
+    // Send a random CAN message.
+    uint32_t number = 0x456789AB;
+
+    uint8_t  len     = 4;    // [0..8]
+    uint32_t id      = 0x123;
+    uint32_t counter = 0;
 
     volatile bool t = true;
     while (t) {
+        ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
+
+        auto packet = SlCan::Packet {id, false, (uint8_t*)&(++counter), len};
+
+        CanManager::get().transmit(packet);
+
         HAL_GPIO_TogglePin(GPIO_OUT_LED_YELLOW_GPIO_Port, GPIO_OUT_LED_YELLOW_Pin);
-        osDelay(500);
+        //        osDelay(500);
     }
     std::unreachable();
 }
@@ -75,6 +113,7 @@ extern "C" [[gnu::used]] int _write([[maybe_unused]] int file, char* ptr, int le
 int main()
 {
     /* USER CODE BEGIN 1 */
+
     std::set_new_handler([] {
         ROOT_LOGE("Memory allocation failed, terminating");
         std::set_new_handler(nullptr);
@@ -102,20 +141,13 @@ int main()
 
     /* Initialize all configured peripherals */
     MX_GPIO_Init();
+    MX_RNG_Init();
     MX_USART1_UART_Init();
     MX_FDCAN1_Init();
     MX_TIM7_Init();
     MX_TIM16_Init();
     MX_USB_Device_Init();
     /* USER CODE BEGIN 2 */
-
-    Logging::Logger::setGetTime(&HAL_GetTick);
-    auto* uartSink = Logging::Logger::addSink<Logging::MtUartSink>(&huart1);
-    //    Logging::Logger::addSink<Logging::MtUsbSink>(&g_usbDebug);
-    Logging::Logger::addSink<Logging::ProxySink>(g_usbDebugTag, uartSink);
-
-    ROOT_LOGI("Logger Initialized.");
-
     /* USER CODE END 2 */
 
     /* Init scheduler */

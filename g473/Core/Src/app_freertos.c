@@ -52,7 +52,7 @@
 osThreadId_t defaultTaskHandle;
 const osThreadAttr_t defaultTask_attributes = {
   .name = "defaultTask",
-  .priority = (osPriority_t) osPriorityNormal,
+  .priority = (osPriority_t) osPriorityLow,
   .stack_size = 512 * 4
 };
 
@@ -92,6 +92,7 @@ void vApplicationStackOverflowHook(xTaskHandle xTask, signed char* pcTaskName)
     configCHECK_FOR_STACK_OVERFLOW is defined to 1 or 2. This hook function is
     called if a stack overflow is detected. */
     printf("Task '%s' stack overflowed", pcTaskName);
+
     Error_Handler();
 }
 /* USER CODE END 4 */

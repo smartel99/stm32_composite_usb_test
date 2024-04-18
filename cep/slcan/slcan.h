@@ -31,9 +31,11 @@
 #include <optional>
 
 namespace SlCan {
-struct Packet {
+struct [[gnu::packed]] Packet {
     // maximum rx buffer len: extended CAN frame with timestamp
-    static constexpr std::size_t s_mtu = 30;    // (sizeof("T1111222281122334455667788EA5F\r")+1)
+    static constexpr std::size_t s_mtu      = 30;    // (sizeof("T1111222281122334455667788EA5F\r")+1)
+    static constexpr size_t      s_stdIdLen = 3;
+    static constexpr size_t      s_extIdLen = 8;
 
     Command command = Command::Invalid;
     union {
@@ -82,6 +84,8 @@ struct Packet {
     }
 
     Packet(const uint8_t* data, size_t len);                                         // Serial -> CAN
+    Packet(uint32_t id, bool extended);                                              // X -> CAN/Serial
+    Packet(uint32_t id, bool extended, const uint8_t* data, size_t len);             // X -> CAN/Serial
     Packet(const FDCAN_RxHeaderTypeDef& header, const uint8_t* data, size_t len);    // CAN -> Serial
     Packet(const FDCAN_TxHeaderTypeDef& header, const uint8_t* data, size_t len);    // CAN -> Serial
 
@@ -94,7 +98,11 @@ struct Packet {
     [[nodiscard]] int8_t                               toSerial(uint8_t* outBuff, size_t outBuffLen) const;
     [[nodiscard]] std::optional<FDCAN_RxHeaderTypeDef> toFDCANRxHeader() const;
     [[nodiscard]] std::optional<FDCAN_TxHeaderTypeDef> toFDCANTxHeader() const;
+
+    [[nodiscard]] size_t sizeOfSerialPacket() const;
 };
+
+static_assert(std::is_trivially_copyable_v<Packet>);
 }    // namespace SlCan
 
 #endif    // CEP_SLCAN_H

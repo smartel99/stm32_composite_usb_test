@@ -96,8 +96,8 @@ file(GLOB_RECURSE SOURCES
         "${SRC_DIR}/cep/*.*"
         "${SRC_DIR}/usb_composite/*.*"
         "${SRC_DIR}/vendor/logging/*.*"
-        "${SRC_DIR}/vendor/cmbacktrace/cm_backtrace/*.c"
-        "${SRC_DIR}/vendor/cmbacktrace/cm_backtrace/fault_handler/gcc/cmb_fault.S"
+        "${SRC_DIR}/vendor/cmbacktrace/cm_backtrace/cm_backtrace.c"
+        "${SRC_DIR}/vendor/cmbacktrace/cm_backtrace/fault_handler/gcc/cmb_fault.s"
         "${SRC_DIR}/vendor/FreeRTOS-Plus-CLI/FreeRTOS_CLI.c"
 )
 

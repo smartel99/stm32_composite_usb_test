@@ -3,7 +3,7 @@
 	url = https://github.com/smartel99/embedded_logger
 [submodule "vendor/cmbacktrace"]
 	path = vendor/cmbacktrace
-	url = git@github.com:smartel99/CmBacktrace.git
+	url = https://github.com/smartel99/CmBacktrace.git
 [submodule "vendor/CANopenNode"]
 	path = vendor/CANopenNode
 	url = https://github.com/CANopenNode/CANopenNode

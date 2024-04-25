@@ -207,9 +207,9 @@ typedef struct
                                        This parameter can be a value of @ref FDCAN_id_type               */
 
   uint32_t RxFrameType;           /*!< Specifies the the received message frame type.
-                                       This parameter can be a value of @ref FDCAN_frame_type            */
+                             This parameter can be a value of @ref FDCAN_frame_type            */
 
-  uint32_t DataLength;            /*!< Specifies the received frame length.
+  size_t DataLength;            /*!< Specifies the received frame length.
                                         This parameter can be a value of @ref FDCAN_data_length_code     */
 
   uint32_t ErrorStateIndicator;   /*!< Specifies the error state indicator.

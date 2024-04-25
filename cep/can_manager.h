@@ -32,15 +32,13 @@
 #include <cstddef>
 #include <cstdint>
 
-extern "C" void HAL_FDCAN_RxFifo0Callback(FDCAN_HandleTypeDef* hfdcan, uint32_t RxFifo0ITs);
-extern "C" void HAL_FDCAN_RxFifo1Callback(FDCAN_HandleTypeDef* hfdcan, uint32_t RxFifo1ITs);
 
 class CanManager {
     static CanManager* s_instance;
     struct [[gnu::packed]] RxPacket;
 
 public:
-    static bool        init(CDC_DeviceInfo* usb);
+    static bool        init(CDC_DeviceInfo* usb, FDCAN_HandleTypeDef* hcan);
     static CanManager& get() { return *s_instance; }
 
     // Sends on both CAN and USB.
@@ -48,7 +46,7 @@ public:
     void transmitFromIrq(const SlCan::Packet& packet);
 
 private:
-    CanManager(CDC_DeviceInfo* usb);
+    explicit CanManager(CDC_DeviceInfo* usb, FDCAN_HandleTypeDef* hcan);
 
     friend void HAL_FDCAN_RxFifo0Callback(FDCAN_HandleTypeDef* hfdcan, uint32_t RxFifo0ITs);
     friend void HAL_FDCAN_RxFifo1Callback(FDCAN_HandleTypeDef* hfdcan, uint32_t RxFifo1ITs);
@@ -65,6 +63,7 @@ private:
 
 
     CDC_DeviceInfo* m_usb = nullptr;
+    FDCAN_HandleTypeDef* m_can = nullptr;
 
     static constexpr size_t s_txTaskStackSize = 384;
     static constexpr size_t s_txTaskPriority  = 7;

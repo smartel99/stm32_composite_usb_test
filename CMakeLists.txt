@@ -66,6 +66,7 @@ endif ()
 include_directories(
         ${SRC_DIR}
         ${SRC_DIR}/cep
+        ${SRC_DIR}/cep/can_open
         ${SRC_DIR}/g473
         ${SRC_DIR}/g473/Core/Inc
         ${SRC_DIR}/g473/Drivers/STM32G4xx_HAL_Driver/Inc
@@ -84,6 +85,14 @@ include_directories(
         ${SRC_DIR}/vendor
         ${SRC_DIR}/vendor/cmbacktrace/cm_backtrace
         ${SRC_DIR}/vendor/FreeRTOS-Plus-CLI
+        ${SRC_DIR}/vendor/CANopenNode
+        ${SRC_DIR}/vendor/CANopenNode/301
+        ${SRC_DIR}/vendor/CANopenNode/303
+        ${SRC_DIR}/vendor/CANopenNode/304
+        ${SRC_DIR}/vendor/CANopenNode/305
+        ${SRC_DIR}/vendor/CANopenNode/309
+        ${SRC_DIR}/vendor/CANopenNode/extra
+        ${SRC_DIR}/vendor/CANopenNode/storage
 )
 
 add_definitions(-DDEBUG -DUSE_HAL_DRIVER -DSTM32G473xx -DSTM32_THREAD_SAFE_STRATEGY=4)
@@ -99,6 +108,14 @@ file(GLOB_RECURSE SOURCES
         "${SRC_DIR}/vendor/cmbacktrace/cm_backtrace/cm_backtrace.c"
         "${SRC_DIR}/vendor/cmbacktrace/cm_backtrace/fault_handler/gcc/cmb_fault.s"
         "${SRC_DIR}/vendor/FreeRTOS-Plus-CLI/FreeRTOS_CLI.c"
+        "${SRC_DIR}/vendor/CANopenNode/CANopen.c"
+        "${SRC_DIR}/vendor/CANopenNode/301/*.c"
+        "${SRC_DIR}/vendor/CANopenNode/303/*.c"
+        "${SRC_DIR}/vendor/CANopenNode/304/*.c"
+        "${SRC_DIR}/vendor/CANopenNode/305/*.c"
+        "${SRC_DIR}/vendor/CANopenNode/309/*.c"
+        "${SRC_DIR}/vendor/CANopenNode/extra/*.c"
+        "${SRC_DIR}/vendor/CANopenNode/storage/CO_storage.c"
 )
 
 # Add cm_backtrace utility functions to FreeRTOS's task.c, if needed.

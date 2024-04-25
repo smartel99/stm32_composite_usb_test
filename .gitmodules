@@ -4,3 +4,6 @@
 [submodule "vendor/cmbacktrace"]
 	path = vendor/cmbacktrace
 	url = git@github.com:smartel99/CmBacktrace.git
+[submodule "vendor/CANopenNode"]
+	path = vendor/CANopenNode
+	url = https://github.com/CANopenNode/CANopenNode

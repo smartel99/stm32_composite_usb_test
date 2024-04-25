@@ -39,8 +39,8 @@ constexpr const char* originToStr(Origin origin)
 }    // namespace
 
 struct [[gnu::packed]] CanManager::RxPacket {
-    SlCan::Packet packet = {};
-    Origin        origin = {};
+    SlCan::Packet packet;
+    Origin        origin = Origin::Unknown;
 };
 
 extern "C" void HAL_FDCAN_RxFifo0Callback(FDCAN_HandleTypeDef* hfdcan, uint32_t RxFifo0ITs)
@@ -68,7 +68,7 @@ extern "C" void HAL_FDCAN_RxFifo1Callback(FDCAN_HandleTypeDef* hfdcan, uint32_t 
         // In theory, we only need 8 bytes. But in practice, the protocol supports up to 64 bytes...
         static uint8_t data[64];
 
-        if (HAL_FDCAN_GetRxMessage(hfdcan, FDCAN_RX_FIFO0, &rx, &data[0]) != HAL_OK) {
+        if (HAL_FDCAN_GetRxMessage(hfdcan, FDCAN_RX_FIFO1, &rx, &data[0]) != HAL_OK) {
             // Unable to get frame.
             return;
         }
@@ -77,9 +77,9 @@ extern "C" void HAL_FDCAN_RxFifo1Callback(FDCAN_HandleTypeDef* hfdcan, uint32_t 
     }
 }
 
-CanManager::CanManager(CDC_DeviceInfo* usb) : m_usb(usb)
+CanManager::CanManager(CDC_DeviceInfo* usb, FDCAN_HandleTypeDef* hcan) : m_usb(usb), m_can(hcan)
 {
-    static_assert(std::is_trivially_copyable_v<CanManager::RxPacket>);
+    static_assert(std::is_trivially_copyable_v<RxPacket>);
     Logging::Logger::setLevel(s_tag, s_level);
 
     CDC_SetOnReceived(
@@ -104,14 +104,14 @@ CanManager::CanManager(CDC_DeviceInfo* usb) : m_usb(usb)
     configASSERT(res == pdPASS);
 }
 
-bool CanManager::init(CDC_DeviceInfo* usb)
+bool CanManager::init(CDC_DeviceInfo* usb, FDCAN_HandleTypeDef* hcan)
 {
     if (s_instance != nullptr) {
         LOGE(s_tag, "Already initialized!");
         return false;
     }
 
-    s_instance = new (&g_canManagerBuff[0]) CanManager(usb);
+    s_instance = new (&g_canManagerBuff[0]) CanManager(usb, hcan);
     return true;
 }
 
@@ -177,12 +177,12 @@ void CanManager::transmitPacketOverUsb(const SlCan::Packet& packet)
     while (t) {
         SlCan::Packet packet;
         if (xQueueReceive(that.m_txQueue, &packet, portMAX_DELAY) == pdTRUE) {
-            if (SlCan::commandIsTransmit(packet.command)) {
+            if (commandIsTransmit(packet.command)) {
                 // Send on CAN and USB.
                 auto header = packet.toFDCANTxHeader();
                 if (!header.has_value()) { LOGE(s_tag, "Unable to convert packet to TX header!"); }
                 else {
-                    HAL_FDCAN_AddMessageToTxFifoQ(&hfdcan1, &*header, &packet.data.packetData.data[0]);
+                    HAL_FDCAN_AddMessageToTxFifoQ(that.m_can, &*header, &packet.data.packetData.data[0]);
                 }
 
                 that.transmitPacketOverUsb(packet);
@@ -205,7 +205,7 @@ void CanManager::transmitPacketOverUsb(const SlCan::Packet& packet)
     while (t) {
         RxPacket packet;
         if (xQueueReceive(that.m_rxQueue, &packet, portMAX_DELAY) == pdTRUE) {
-            if (SlCan::commandIsTransmit(packet.packet.command)) {
+            if (commandIsTransmit(packet.packet.command)) {
 #define X(field) packet.packet.data.packetData.field
                 //                LOGD(s_tag,
                 //                     "Received packet on %s. ID: %#x, isExt: %d, isRem: %d, DLC: %d",
@@ -221,13 +221,15 @@ void CanManager::transmitPacketOverUsb(const SlCan::Packet& packet)
                     auto header = packet.packet.toFDCANTxHeader();
                     if (!header.has_value()) { LOGE(s_tag, "Unable to convert packet to TX header!"); }
                     else {
-                        HAL_FDCAN_AddMessageToTxFifoQ(&hfdcan1, &*header, &X(data[0]));
+                        HAL_FDCAN_AddMessageToTxFifoQ(that.m_can, &header.value(), &X(data[0]));
                     }
                 }
                 else if (packet.origin == Origin::Can) {
                     that.transmitPacketOverUsb(packet.packet);
                 }
 #undef X
+                void prv_read_can_received_msg(const SlCan::Packet& packet);
+                prv_read_can_received_msg(packet.packet);
             }
 
             // Handle the packet.

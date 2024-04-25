@@ -77,7 +77,7 @@ extern "C" void StartDefaultTask(void* args)
     if (HAL_FDCAN_ActivateNotification(&hfdcan1, FDCAN_IT_RX_FIFO0_NEW_MESSAGE, 0) != HAL_OK) { Error_Handler(); }
 
     CLI cli {&g_usbDebug};
-    CanManager::init(&g_usbFrasy);
+    CanManager::init(&g_usbFrasy, &hfdcan1);
 
     // Send a random CAN message.
     uint32_t number = 0x456789AB;

@@ -28,6 +28,7 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
+#include "can_open/CO_app_STM32.h"
 #include <cm_backtrace.h>
 /* USER CODE END Includes */
 
@@ -130,10 +131,9 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef* htim)
     if (htim->Instance == TIM7) {
         extern uint32_t g_totalRuntime;
         g_totalRuntime++;
-
-        extern osThreadId_t defaultTaskHandle;
-        vTaskNotifyGiveFromISR(defaultTaskHandle, NULL);
     }
+
+    if (htim == canopenNodeStm32->timerHandle) { canopen_app_interrupt(); }
     /* USER CODE END Callback 1 */
 }
 

@@ -45,6 +45,8 @@ struct [[gnu::packed]] CanManager::RxPacket {
 
 extern "C" void HAL_FDCAN_RxFifo0Callback(FDCAN_HandleTypeDef* hfdcan, uint32_t RxFifo0ITs)
 {
+    auto& that = CanManager::get();
+    if (hfdcan != that.m_can) { return; }
     if ((RxFifo0ITs & FDCAN_IT_RX_FIFO0_NEW_MESSAGE) != 0) {
         // :D
         FDCAN_RxHeaderTypeDef rx;
@@ -56,12 +58,14 @@ extern "C" void HAL_FDCAN_RxFifo0Callback(FDCAN_HandleTypeDef* hfdcan, uint32_t 
             return;
         }
 
-        CanManager::get().receiveFromIrq({.packet = {rx, &data[0], rx.DataLength}, .origin = Origin::Can});
+        that.receiveFromIrq({.packet = {rx, &data[0], rx.DataLength}, .origin = Origin::Can});
     }
 }
 
 extern "C" void HAL_FDCAN_RxFifo1Callback(FDCAN_HandleTypeDef* hfdcan, uint32_t RxFifo1ITs)
 {
+    auto& that = CanManager::get();
+    if (hfdcan != that.m_can) { return; }
     if ((RxFifo1ITs & FDCAN_IT_RX_FIFO1_NEW_MESSAGE) != 0) {
         // :D
         FDCAN_RxHeaderTypeDef rx;
@@ -73,7 +77,41 @@ extern "C" void HAL_FDCAN_RxFifo1Callback(FDCAN_HandleTypeDef* hfdcan, uint32_t 
             return;
         }
 
-        CanManager::get().receiveFromIrq({.packet = {rx, &data[0], rx.DataLength}, .origin = Origin::Can});
+        that.receiveFromIrq({.packet = {rx, &data[0], rx.DataLength}, .origin = Origin::Can});
+    }
+}
+
+extern "C" void HAL_FDCAN_TxBufferCompleteCallback(FDCAN_HandleTypeDef* hfdcan, [[maybe_unused]] uint32_t BufferIndexes)
+{
+    auto& that = CanManager::get();
+    if (hfdcan != that.m_can) { return; }
+
+    that.m_droppedCanPackets    = 0;
+    that.m_attemptsForCanPacket = 0;
+
+    // Notify the tasks that are waiting for room in the FIFO, if any, prioritizing the RX task.
+    if (that.m_rxTaskWaitingForTxRoom) { vTaskNotifyGiveFromISR(that.m_rxTask, nullptr); }
+    else if (that.m_txTaskWaitingForTxRoom) {
+        vTaskNotifyGiveFromISR(that.m_txTask, nullptr);
+    }
+}
+
+extern "C" void HAL_FDCAN_ErrorStatusCallback(FDCAN_HandleTypeDef* hfdcan, uint32_t ErrorStatusITs)
+{
+    auto& that = CanManager::get();
+    if (hfdcan != that.m_can) { return; }
+
+    // Error during transmission.
+    FDCAN_ProtocolStatusTypeDef status {};
+    HAL_FDCAN_GetProtocolStatus(that.m_can, &status);
+    if ((ErrorStatusITs & FDCAN_IT_LIST_PROTOCOL_ERROR) != 0) {
+        that.m_attemptsForCanPacket++;
+        if (that.m_attemptsForCanPacket >= CanManager::s_maxAttemptsPerCanPacket) {
+            that.m_droppedCanPackets++;
+            // Figure out which buffer is currently the one being sent.
+            auto currBuffer = (that.m_can->Instance->TXFQS & FDCAN_TXFQS_TFGI_Msk) >> FDCAN_TXFQS_TFGI_Pos;
+            HAL_FDCAN_AbortTxRequest(that.m_can, currBuffer);
+        }
     }
 }
 
@@ -81,6 +119,8 @@ CanManager::CanManager(CDC_DeviceInfo* usb, FDCAN_HandleTypeDef* hcan) : m_usb(u
 {
     static_assert(std::is_trivially_copyable_v<RxPacket>);
     Logging::Logger::setLevel(s_tag, s_level);
+
+//    configASSERT(initCan() && "Unable to configure CAN");
 
     CDC_SetOnReceived(
       usb,
@@ -102,6 +142,43 @@ CanManager::CanManager(CDC_DeviceInfo* usb, FDCAN_HandleTypeDef* hcan) : m_usb(u
 
     res = xTaskCreate(&rxTask, "can_rx", s_rxTaskStackSize, this, s_rxTaskPriority, &m_rxTask);
     configASSERT(res == pdPASS);
+}
+
+bool CanManager::initCan()
+{
+    // Allow everything on CAN!
+    FDCAN_FilterTypeDef sFilterConfig;
+
+    /* Configure Rx filter */
+    sFilterConfig.IdType       = FDCAN_STANDARD_ID;
+    sFilterConfig.FilterIndex  = 0;
+    sFilterConfig.FilterType   = FDCAN_FILTER_MASK;
+    sFilterConfig.FilterConfig = FDCAN_FILTER_TO_RXFIFO0;
+    sFilterConfig.FilterID1    = 0;
+    sFilterConfig.FilterID2    = 0;
+    if (HAL_FDCAN_ConfigFilter(m_can, &sFilterConfig) != HAL_OK) { return false; }
+
+    sFilterConfig.IdType      = FDCAN_EXTENDED_ID;
+    sFilterConfig.FilterIndex = 1;
+    if (HAL_FDCAN_ConfigFilter(m_can, &sFilterConfig) != HAL_OK) { return false; }
+
+    if (HAL_FDCAN_ConfigGlobalFilter(
+          m_can, FDCAN_ACCEPT_IN_RX_FIFO0, FDCAN_ACCEPT_IN_RX_FIFO0, FDCAN_FILTER_REMOTE, FDCAN_FILTER_REMOTE) !=
+        HAL_OK) {
+        return false;
+    }
+
+    /* Start the FDCAN module */
+    if (HAL_FDCAN_Start(m_can) != HAL_OK) { return false; }
+
+    static constexpr auto notifications = FDCAN_IT_RX_FIFO0_NEW_MESSAGE | FDCAN_IT_RX_FIFO1_NEW_MESSAGE |
+                                          FDCAN_IT_TX_COMPLETE | FDCAN_IT_LIST_PROTOCOL_ERROR;
+    if (HAL_FDCAN_ActivateNotification(m_can, notifications, FDCAN_TX_BUFFER0 | FDCAN_TX_BUFFER1 | FDCAN_TX_BUFFER2) !=
+        HAL_OK) {
+        return false;
+    }
+
+    return true;
 }
 
 bool CanManager::init(CDC_DeviceInfo* usb, FDCAN_HandleTypeDef* hcan)
@@ -130,7 +207,7 @@ void CanManager::transmitFromIrq(const SlCan::Packet& packet)
         auto res = xQueueSendFromISR(m_txQueue, &packet, nullptr);
         // If we assert false here, we're not sending messages fast enough. Increase the size of the queue, or augment
         // the priority of the task.
-        configASSERT(res == pdPASS && "Unable to queue packet");
+        configASSERT(res == pdPASS && "Unable to queue packet in txQueue");
     }
 }
 
@@ -141,7 +218,7 @@ void CanManager::receiveFromIrq(const CanManager::RxPacket& packet)
         auto res = xQueueSendFromISR(m_rxQueue, &packet, nullptr);
         // If we assert false here, we're not reading messages fast enough. Increase the size of the queue, or augment
         // the priority of the task.
-        configASSERT(res == pdPASS && "Unable to queue packet");
+        configASSERT(res == pdPASS && "Unable to queue packet in rxQueue");
     }
 }
 
@@ -166,6 +243,29 @@ void CanManager::transmitPacketOverUsb(const SlCan::Packet& packet)
     }
 }
 
+void CanManager::transmitPacketOverCan(const SlCan::Packet& packet, bool isFromRxTask)
+{
+    if (m_droppedCanPackets > s_maxDroppedCanPackets) {
+        ++m_droppedCanPackets;
+        return;
+    }
+
+    auto header = packet.toFDCANTxHeader();
+    if (!header.has_value()) { LOGE(s_tag, "Unable to convert packet to TX header!"); }
+    else {
+        // If there's no room in the FIFO, block until there is. The Tx complete IRQ will free us.
+        if (HAL_FDCAN_GetTxFifoFreeLevel(m_can) == 0) {
+            if (isFromRxTask) { m_rxTaskWaitingForTxRoom = true; }
+            else {
+                m_txTaskWaitingForTxRoom = true;
+            }
+            ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
+        }
+
+        HAL_FDCAN_AddMessageToTxFifoQ(m_can, &header.value(), &packet.data.packetData.data[0]);
+    }
+}
+
 [[noreturn]] void CanManager::txTask(void* args)
 {
     configASSERT(args != nullptr);
@@ -179,12 +279,7 @@ void CanManager::transmitPacketOverUsb(const SlCan::Packet& packet)
         if (xQueueReceive(that.m_txQueue, &packet, portMAX_DELAY) == pdTRUE) {
             if (commandIsTransmit(packet.command)) {
                 // Send on CAN and USB.
-                auto header = packet.toFDCANTxHeader();
-                if (!header.has_value()) { LOGE(s_tag, "Unable to convert packet to TX header!"); }
-                else {
-                    HAL_FDCAN_AddMessageToTxFifoQ(that.m_can, &*header, &packet.data.packetData.data[0]);
-                }
-
+                that.transmitPacketOverCan(packet, false);
                 that.transmitPacketOverUsb(packet);
             }
         }
@@ -218,13 +313,13 @@ void CanManager::transmitPacketOverUsb(const SlCan::Packet& packet)
 
                 if (packet.origin == Origin::Usb) {
                     // Retransmit on CAN.
-                    auto header = packet.packet.toFDCANTxHeader();
-                    if (!header.has_value()) { LOGE(s_tag, "Unable to convert packet to TX header!"); }
-                    else {
-                        HAL_FDCAN_AddMessageToTxFifoQ(that.m_can, &header.value(), &X(data[0]));
-                    }
+                    that.transmitPacketOverCan(packet.packet, true);
                 }
                 else if (packet.origin == Origin::Can) {
+                    if (that.m_droppedCanPackets > 0) {
+                        LOGD(s_tag, "Dropped %d messages since last reception", that.m_droppedCanPackets);
+                        that.m_droppedCanPackets = 0;
+                    }
                     that.transmitPacketOverUsb(packet.packet);
                 }
 #undef X

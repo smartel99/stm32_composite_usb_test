@@ -48,11 +48,16 @@ public:
 private:
     explicit CanManager(CDC_DeviceInfo* usb, FDCAN_HandleTypeDef* hcan);
 
+    bool initCan();
+
     friend void HAL_FDCAN_RxFifo0Callback(FDCAN_HandleTypeDef* hfdcan, uint32_t RxFifo0ITs);
     friend void HAL_FDCAN_RxFifo1Callback(FDCAN_HandleTypeDef* hfdcan, uint32_t RxFifo1ITs);
+    friend void HAL_FDCAN_TxBufferCompleteCallback(FDCAN_HandleTypeDef* hfdcan, uint32_t BufferIndexes);
+    friend void HAL_FDCAN_ErrorStatusCallback(FDCAN_HandleTypeDef *hfdcan, uint32_t ErrorStatusITs);
     void        receiveFromIrq(const RxPacket& packet);
 
     void transmitPacketOverUsb(const SlCan::Packet& packet);
+    void transmitPacketOverCan(const SlCan::Packet& packet, bool isFromRxTask);
 
     [[noreturn]] static void txTask(void* args);
     [[noreturn]] static void rxTask(void* args);
@@ -62,7 +67,7 @@ private:
     static constexpr Logging::Level s_level = Logging::Level::info;
 
 
-    CDC_DeviceInfo* m_usb = nullptr;
+    CDC_DeviceInfo*      m_usb = nullptr;
     FDCAN_HandleTypeDef* m_can = nullptr;
 
     static constexpr size_t s_txTaskStackSize = 384;
@@ -76,5 +81,14 @@ private:
     TaskHandle_t            m_rxTask          = nullptr;
     static constexpr size_t s_rxQueueSize     = 150;    //!< 24 bytes per item, 18 bytes when gnu::packed.
     QueueHandle_t           m_rxQueue         = nullptr;
+
+    static constexpr size_t s_maxDroppedCanPackets = 5;
+    size_t                  m_droppedCanPackets    = 0;
+
+    static constexpr uint8_t s_maxAttemptsPerCanPacket = 5;
+    uint8_t                  m_attemptsForCanPacket    = 0;
+
+    bool m_rxTaskWaitingForTxRoom = false;
+    bool m_txTaskWaitingForTxRoom = false;
 };
 #endif    // CEP_CAN_MANAGER_H

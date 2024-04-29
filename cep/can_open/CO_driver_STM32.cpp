@@ -50,9 +50,7 @@ static CO_CANmodule_t* CANModule_local = nullptr; /* Local instance of global CA
 void CO_CANsetConfigurationMode(void* CANptr)
 {
     /* Put CAN module in configuration mode */
-    if (CANptr != nullptr) {
-        HAL_FDCAN_Stop(static_cast<CanopenNodeStm32*>(CANptr)->canHandle);
-    }
+    if (CANptr != nullptr) { HAL_FDCAN_Stop(static_cast<CanopenNodeStm32*>(CANptr)->canHandle); }
 }
 
 /******************************************************************************/
@@ -60,8 +58,7 @@ void CO_CANsetNormalMode(CO_CANmodule_t* CANmodule)
 {
     /* Put CAN module in normal mode */
     if (CANmodule->CANptr != nullptr) {
-        if (HAL_FDCAN_Start(static_cast<CanopenNodeStm32*>(CANmodule->CANptr)->canHandle) == HAL_OK)
-        {
+        if (HAL_FDCAN_Start(static_cast<CanopenNodeStm32*>(CANmodule->CANptr)->canHandle) == HAL_OK) {
             CANmodule->CANnormal = true;
         }
     }
@@ -138,7 +135,7 @@ CO_ReturnError_t CO_CANmodule_init(CO_CANmodule_t* CANmodule,
                                          FDCAN_IT_TX_COMPLETE | FDCAN_IT_TX_FIFO_EMPTY | FDCAN_IT_BUS_OFF |
                                          FDCAN_IT_ARB_PROTOCOL_ERROR | FDCAN_IT_DATA_PROTOCOL_ERROR |
                                          FDCAN_IT_ERROR_PASSIVE | FDCAN_IT_ERROR_WARNING,
-                                       0xFFFFFFFF) != HAL_OK) {
+                                       FDCAN_TX_BUFFER0 | FDCAN_TX_BUFFER1 | FDCAN_TX_BUFFER2) != HAL_OK) {
         return CO_ERROR_ILLEGAL_ARGUMENT;
     }
 
@@ -150,7 +147,6 @@ void CO_CANmodule_disable(CO_CANmodule_t* CANmodule)
 {
     if (CANmodule != nullptr && CANmodule->CANptr != nullptr) {
         HAL_FDCAN_Stop(static_cast<CanopenNodeStm32*>(CANmodule->CANptr)->canHandle);
-
     }
 }
 
@@ -280,7 +276,12 @@ void CO_CANclearPendingSyncPDOs(CO_CANmodule_t* CANmodule)
 /******************************************************************************/
 /* Get error counters from the module. If necessary, function may use
  * different way to determine errors. */
-static uint16_t rxErrors = 0, txErrors = 0, overflow = 0;
+namespace {
+[[maybe_unused]] uint16_t rxErrors = 0;
+[[maybe_unused]] uint16_t txErrors = 0;
+[[maybe_unused]] uint16_t overflow = 0;
+
+}    // namespace
 
 void CO_CANmodule_process(CO_CANmodule_t* CANmodule)
 {

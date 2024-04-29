@@ -22,8 +22,8 @@
  * limitations under the License.
  */
 
-#ifndef CO_STORAGE_BLANK_H
-#define CO_STORAGE_BLANK_H
+#ifndef CEP_CAN_OPEN_CO_STORAGEBLANK_H
+#define CEP_CAN_OPEN_CO_STORAGEBLANK_H
 
 #include "storage/CO_storage.h"
 
@@ -55,4 +55,4 @@ uint32_t CO_storageBlank_auto_process(CO_storage_t* storage, bool_t closeFiles);
 
 #endif /* (CO_CONFIG_STORAGE) & CO_CONFIG_STORAGE_ENABLE */
 
-#endif /* CO_STORAGE_BLANK_H */
+#endif /* CEP_CAN_OPEN_CO_STORAGEBLANK_H */

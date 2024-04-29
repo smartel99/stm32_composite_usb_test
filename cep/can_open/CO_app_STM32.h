@@ -27,7 +27,7 @@ extern "C" {
 #endif
 
 
-struct CanopenNodeStm32 {
+typedef struct {
     uint8_t desiredNodeId; /*This is the Node ID that you ask the CANOpen stack to assign to your device, although it
                             * might not always be the final NodeID, after calling canopen_app_init() you should check
                             * ActiveNodeID of CANopenNodeSTM32 structure for assigned Node ID.
@@ -50,7 +50,7 @@ struct CanopenNodeStm32 {
     uint8_t outStatusLedRed;      // This will be updated by the stack - Use them for the LED management
     CO_t*   canOpenStack;
 
-};
+} CanopenNodeStm32;
 
 
 // In order to use CANOpenSTM32, you'll have it have a canopenNodeSTM32 structure somewhere in your codes, it is usually

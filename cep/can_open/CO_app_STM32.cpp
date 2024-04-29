@@ -53,26 +53,29 @@ namespace {
 CO_t* CO = nullptr; /* CANopen object */
 
 // Global variables
-uint32_t         time_old, time_current;
+uint32_t         timeOld, timeCurrent;
 CO_ReturnError_t err;
+uint32_t         storageInitError = 0;
 }    // namespace
 
 /* This function will basically setup the CANopen node */
 int canopen_app_init(CanopenNodeStm32* canopenStm32)
 {
-
     // Keep a copy global reference of canOpenSTM32 Object
     canopenNodeStm32 = canopenStm32;
 
 #if (CO_CONFIG_STORAGE) & CO_CONFIG_STORAGE_ENABLE
     CO_storage_t       storage;
-    CO_storage_entry_t storageEntries[]    = {{.addr       = &OD_PERSIST_COMM,
-                                               .len        = sizeof(OD_PERSIST_COMM),
-                                               .subIndexOD = 2,
-                                               .attr       = CO_storage_cmd | CO_storage_restore,
-                                               .addrNV     = nullptr}};
-    uint8_t            storageEntriesCount = sizeof(storageEntries) / sizeof(storageEntries[0]);
-    uint32_t           storageInitError    = 0;
+    CO_storage_entry_t storageEntries[] = {
+      {
+        .addr       = &OD_PERSIST_COMM,
+        .len        = sizeof(OD_PERSIST_COMM),
+        .subIndexOD = 2,
+        .attr       = CO_storage_cmd | CO_storage_restore,
+        .addrNV     = nullptr,
+      },
+    };
+    uint8_t storageEntriesCount = sizeof(storageEntries) / sizeof(storageEntries[0]);
 #endif
 
     /* Allocate memory */
@@ -93,7 +96,7 @@ int canopen_app_init(CanopenNodeStm32* canopenStm32)
         return 1;
     }
     else {
-        log_printf("Allocated %u bytes for CANopen objects\n", heapMemoryUsed);
+        log_printf("Allocated %lu bytes for CANopen objects\n", heapMemoryUsed);
     }
 
     canopenNodeStm32->canOpenStack = CO;
@@ -103,12 +106,12 @@ int canopen_app_init(CanopenNodeStm32* canopenStm32)
                                CO->CANmodule,
                                OD_ENTRY_H1010_storeParameters,
                                OD_ENTRY_H1011_restoreDefaultParameters,
-                               storageEntries,
+                               &storageEntries[0],
                                storageEntriesCount,
                                &storageInitError);
 
     if (err != CO_ERROR_NO && err != CO_ERROR_DATA_CORRUPT) {
-        log_printf("Error: Storage %d\n", storageInitError);
+        log_printf("Error: Storage %lu\n", storageInitError);
         return 2;
     }
 #endif
@@ -126,7 +129,7 @@ int canopen_app_resetCommunication()
     CO->CANmodule->CANnormal = false;
 
     /* Enter CAN configuration. */
-    CO_CANsetConfigurationMode((void*)canopenNodeStm32);
+    CO_CANsetConfigurationMode(canopenNodeStm32);
     CO_CANmodule_disable(CO->CANmodule);
 
     /* initialize CANopen */
@@ -162,7 +165,7 @@ int canopen_app_resetCommunication()
                          canopenNodeStm32->activeNodeId,
                          &errInfo);
     if (err != CO_ERROR_NO && err != CO_ERROR_NODE_ID_UNCONFIGURED_LSS) {
-        if (err == CO_ERROR_OD_PARAMETERS) { log_printf("Error: Object Dictionary entry 0x%X\n", errInfo); }
+        if (err == CO_ERROR_OD_PARAMETERS) { log_printf("Error: Object Dictionary entry 0x%lX\n", errInfo); }
         else {
             log_printf("Error: CANopen initialization failed: %d\n", err);
         }
@@ -171,7 +174,7 @@ int canopen_app_resetCommunication()
 
     err = CO_CANopenInitPDO(CO, CO->em, OD, canopenNodeStm32->activeNodeId, &errInfo);
     if (err != CO_ERROR_NO) {
-        if (err == CO_ERROR_OD_PARAMETERS) { log_printf("Error: Object Dictionary entry 0x%X\n", errInfo); }
+        if (err == CO_ERROR_OD_PARAMETERS) { log_printf("Error: Object Dictionary entry 0x%lX\n", errInfo); }
         else {
             log_printf("Error: PDO initialization failed: %d\n", err);
         }
@@ -201,7 +204,7 @@ int canopen_app_resetCommunication()
 
     log_printf("CANopenNode - Running...\n");
     fflush(stdout);
-    time_old = time_current = HAL_GetTick();
+    timeOld = timeCurrent = HAL_GetTick();
     return 0;
 }
 
@@ -209,26 +212,26 @@ void canopen_app_process()
 {
     /* loop for normal program execution ******************************************/
     /* get time difference since last function call */
-    time_current = HAL_GetTick();
+    timeCurrent = HAL_GetTick();
 
-    if ((time_current - time_old) > 0) {    // Make sure more than 1ms elapsed
+    if ((timeCurrent - timeOld) > 0) {    // Make sure more than 1ms elapsed
         /* CANopen process */
-        CO_NMT_reset_cmd_t reset_status;
-        uint32_t           timeDifference_us = (time_current - time_old) * 1000;
-        time_old                             = time_current;
-        reset_status                         = CO_process(CO, false, timeDifference_us, nullptr);
-        canopenNodeStm32->outStatusLedRed    = CO_LED_RED(CO->LEDs, CO_LED_CANopen);
-        canopenNodeStm32->outStatusLedGreen  = CO_LED_GREEN(CO->LEDs, CO_LED_CANopen);
+        CO_NMT_reset_cmd_t resetStatus;
+        uint32_t           timeDifferenceUs = (timeCurrent - timeOld) * 1000;
+        timeOld                             = timeCurrent;
+        resetStatus                         = CO_process(CO, false, timeDifferenceUs, nullptr);
+        canopenNodeStm32->outStatusLedRed   = CO_LED_RED(CO->LEDs, CO_LED_CANopen);
+        canopenNodeStm32->outStatusLedGreen = CO_LED_GREEN(CO->LEDs, CO_LED_CANopen);
 
-        if (reset_status == CO_RESET_COMM) {
+        if (resetStatus == CO_RESET_COMM) {
             /* delete objects from memory */
             HAL_TIM_Base_Stop_IT(canopenNodeStm32->timerHandle);
-            CO_CANsetConfigurationMode((void*)canopenNodeStm32);
+            CO_CANsetConfigurationMode(canopenNodeStm32);
             CO_delete(CO);
             log_printf("CANopenNode Reset Communication request\n");
             canopen_app_init(canopenNodeStm32);    // Reset Communication routine
         }
-        else if (reset_status == CO_RESET_APP) {
+        else if (resetStatus == CO_RESET_APP) {
             log_printf("CANopenNode Device Reset\n");
             HAL_NVIC_SystemReset();    // Reset the STM32 Microcontroller
         }
@@ -242,16 +245,16 @@ void canopen_app_interrupt(void)
     if (!CO->nodeIdUnconfigured && CO->CANmodule->CANnormal) {
         bool_t syncWas = false;
         /* get time difference since last function call */
-        uint32_t timeDifference_us = 1000;    // 1ms second
+        uint32_t timeDifferenceUs = 1000;    // 1ms second
 
 #if (CO_CONFIG_SYNC) & CO_CONFIG_SYNC_ENABLE
-        syncWas = CO_process_SYNC(CO, timeDifference_us, nullptr);
+        syncWas = CO_process_SYNC(CO, timeDifferenceUs, nullptr);
 #endif
 #if (CO_CONFIG_PDO) & CO_CONFIG_RPDO_ENABLE
-        CO_process_RPDO(CO, syncWas, timeDifference_us, nullptr);
+        CO_process_RPDO(CO, syncWas, timeDifferenceUs, nullptr);
 #endif
 #if (CO_CONFIG_PDO) & CO_CONFIG_TPDO_ENABLE
-        CO_process_TPDO(CO, syncWas, timeDifference_us, nullptr);
+        CO_process_TPDO(CO, syncWas, timeDifferenceUs, nullptr);
 #endif
 
         /* Further I/O or nonblocking application code may go here. */

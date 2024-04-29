@@ -17,6 +17,7 @@
 #include "g473/Core/Inc/main.h"
 
 #include "can_manager.h"
+#include "can_open/CO_app_STM32.h"
 #include "cli/cli.h"
 #include "cmsis_os.h"
 #include "fdcan.h"
@@ -49,53 +50,37 @@ extern "C" void StartDefaultTask(void* args)
     Logging::Logger::addSink<Logging::ProxySink>(g_usbDebugTag, uartSink);
 
     ROOT_LOGI("\n\n\n\rLogger Initialized.");
-    // Allow everything on CAN!
-    FDCAN_FilterTypeDef sFilterConfig;
-
-    /* Configure Rx filter */
-    sFilterConfig.IdType       = FDCAN_STANDARD_ID;
-    sFilterConfig.FilterIndex  = 0;
-    sFilterConfig.FilterType   = FDCAN_FILTER_MASK;
-    sFilterConfig.FilterConfig = FDCAN_FILTER_TO_RXFIFO0;
-    sFilterConfig.FilterID1    = 0;
-    sFilterConfig.FilterID2    = 0;
-    if (HAL_FDCAN_ConfigFilter(&hfdcan1, &sFilterConfig) != HAL_OK) { Error_Handler(); }
-
-    sFilterConfig.IdType      = FDCAN_EXTENDED_ID;
-    sFilterConfig.FilterIndex = 1;
-    if (HAL_FDCAN_ConfigFilter(&hfdcan1, &sFilterConfig) != HAL_OK) { Error_Handler(); }
-
-    if (HAL_FDCAN_ConfigGlobalFilter(
-          &hfdcan1, FDCAN_ACCEPT_IN_RX_FIFO0, FDCAN_ACCEPT_IN_RX_FIFO0, FDCAN_FILTER_REMOTE, FDCAN_FILTER_REMOTE) !=
-        HAL_OK) {
-        Error_Handler();
-    }
-
-    /* Start the FDCAN module */
-    if (HAL_FDCAN_Start(&hfdcan1) != HAL_OK) { Error_Handler(); }
-
-    if (HAL_FDCAN_ActivateNotification(&hfdcan1, FDCAN_IT_RX_FIFO0_NEW_MESSAGE, 0) != HAL_OK) { Error_Handler(); }
 
     CLI cli {&g_usbDebug};
     CanManager::init(&g_usbFrasy, &hfdcan1);
 
-    // Send a random CAN message.
-    uint32_t number = 0x456789AB;
+    CanopenNodeStm32 canOpenNodeSTM32 {};
+    canOpenNodeSTM32.canHandle      = &hfdcan1;
+    canOpenNodeSTM32.hwInitFunction = MX_FDCAN1_Init;
+    canOpenNodeSTM32.timerHandle    = &htim7;
+    canOpenNodeSTM32.desiredNodeId  = 21;
+    canOpenNodeSTM32.baudrate       = 1000;
+    canopen_app_init(&canOpenNodeSTM32);
 
-    uint8_t  len     = 4;    // [0..8]
-    uint32_t id      = 0x123;
-    uint32_t counter = 0;
-
-    volatile bool t = true;
+    volatile bool t       = true;
+    size_t        counter = 0;
     while (t) {
-        ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
+        if (++counter >= 500) {
+            counter = 0;
+            HAL_GPIO_TogglePin(GPIO_OUT_LED_YELLOW_GPIO_Port, GPIO_OUT_LED_YELLOW_Pin);
+        }
 
-        auto packet = SlCan::Packet {id, false, (uint8_t*)&(++counter), len};
-
-        CanManager::get().transmit(packet);
-
-        HAL_GPIO_TogglePin(GPIO_OUT_LED_YELLOW_GPIO_Port, GPIO_OUT_LED_YELLOW_Pin);
-        //        osDelay(500);
+        // Reflect CANopenStatus on LEDs
+        HAL_GPIO_WritePin(GPIO_OUT_LED_GREEN_GPIO_Port,
+                          GPIO_OUT_LED_GREEN_Pin,
+                          static_cast<GPIO_PinState>(canOpenNodeSTM32.outStatusLedGreen == 0u));
+        HAL_GPIO_WritePin(GPIO_OUT_LED_RED_GPIO_Port,
+                          GPIO_OUT_LED_RED_Pin,
+                          static_cast<GPIO_PinState>(canOpenNodeSTM32.outStatusLedRed == 0u));
+        canopen_app_process();
+        // Sleep for 1ms, you can decrease it if required, in the canopen_app_process we will double check to make sure
+        // 1ms passed
+        vTaskDelay(pdMS_TO_TICKS(1));
     }
     std::unreachable();
 }

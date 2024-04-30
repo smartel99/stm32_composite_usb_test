@@ -58,7 +58,7 @@ extern "C" void StartDefaultTask(void* args)
     canOpenNodeSTM32.canHandle      = &hfdcan1;
     canOpenNodeSTM32.hwInitFunction = MX_FDCAN1_Init;
     canOpenNodeSTM32.timerHandle    = &htim7;
-    canOpenNodeSTM32.desiredNodeId  = 21;
+    canOpenNodeSTM32.desiredNodeId  = 0xFF; //! Not configured.
     canOpenNodeSTM32.baudrate       = 1000;
     canopen_app_init(&canOpenNodeSTM32);
 

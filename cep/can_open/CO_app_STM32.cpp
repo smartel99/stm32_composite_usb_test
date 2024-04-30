@@ -27,16 +27,17 @@
 #include "CO_app_STM32.h"
 #include "CANopen.h"
 #include "main.h"
-#include <cstdio>
 
 #include "CO_storageBlank.h"
 #include "OD.h"
 
+#include <cstdio>
+#include <logging/logger.h>
 // It will be set by canopen_app_init and will be used across app to get access to CANOpen objects
 CanopenNodeStm32* canopenNodeStm32;
 
 /* Printf function of CanOpen app */
-#define log_printf(macropar_message, ...) printf(macropar_message __VA_OPT__(, ) __VA_ARGS__)
+#define log_printf(macropar_message, ...) LOGI("CANopen", macropar_message __VA_OPT__(, ) __VA_ARGS__)
 
 /* default values for CO_CANopenInit() */
 #define NMT_CONTROL                                                                                                    \
@@ -56,6 +57,33 @@ CO_t* CO = nullptr; /* CANopen object */
 uint32_t         timeOld, timeCurrent;
 CO_ReturnError_t err;
 uint32_t         storageInitError = 0;
+
+const char* canOpenErrorToStr(CO_ReturnError_t err)
+{
+    switch (err) {
+        case CO_ERROR_NO: return "No error";
+        case CO_ERROR_ILLEGAL_ARGUMENT: return "Illegal Argument";
+        case CO_ERROR_OUT_OF_MEMORY: return "Out of Memory";
+        case CO_ERROR_TIMEOUT: return "Timeout";
+        case CO_ERROR_ILLEGAL_BAUDRATE: return "Illegal Baudrate";
+        case CO_ERROR_RX_OVERFLOW: return "RX Overflow";
+        case CO_ERROR_RX_PDO_OVERFLOW: return "RX PDO Overflow";
+        case CO_ERROR_RX_MSG_LENGTH: return "RX MSG Length";
+        case CO_ERROR_RX_PDO_LENGTH: return "RX PDO Length";
+        case CO_ERROR_TX_OVERFLOW: return "TX Overflow";
+        case CO_ERROR_TX_PDO_WINDOW: return "TX PDO Window";
+        case CO_ERROR_TX_UNCONFIGURED: return "TX Uncofigured";
+        case CO_ERROR_OD_PARAMETERS: return "OD Parameters";
+        case CO_ERROR_DATA_CORRUPT: return "Data Corrupt";
+        case CO_ERROR_CRC: return "CRC Error";
+        case CO_ERROR_TX_BUSY: return "TX Busy";
+        case CO_ERROR_WRONG_NMT_STATE: return "Wrong NMT State";
+        case CO_ERROR_SYSCALL: return "Syscall Error";
+        case CO_ERROR_INVALID_STATE: return "Invalid State";
+        case CO_ERROR_NODE_ID_UNCONFIGURED_LSS: return "Unconfigured LSS Node ID";
+        default: return "Unknown";
+    }
+}
 }    // namespace
 
 /* This function will basically setup the CANopen node */
@@ -92,11 +120,11 @@ int canopen_app_init(CanopenNodeStm32* canopenStm32)
     uint32_t heapMemoryUsed;
     CO = CO_new(config_ptr, &heapMemoryUsed);
     if (CO == nullptr) {
-        log_printf("Error: Can't allocate memory\n");
+        log_printf("Error: Can't allocate memory");
         return 1;
     }
     else {
-        log_printf("Allocated %lu bytes for CANopen objects\n", heapMemoryUsed);
+        log_printf("Allocated %lu bytes for CANopen objects", heapMemoryUsed);
     }
 
     canopenNodeStm32->canOpenStack = CO;
@@ -111,7 +139,7 @@ int canopen_app_init(CanopenNodeStm32* canopenStm32)
                                &storageInitError);
 
     if (err != CO_ERROR_NO && err != CO_ERROR_DATA_CORRUPT) {
-        log_printf("Error: Storage %lu\n", storageInitError);
+        log_printf("Error: Storage (%lu) %s", storageInitError, canOpenErrorToStr(err));
         return 2;
     }
 #endif
@@ -123,7 +151,7 @@ int canopen_app_init(CanopenNodeStm32* canopenStm32)
 int canopen_app_resetCommunication()
 {
     /* CANopen communication reset - initialize CANopen objects *******************/
-    log_printf("CANopenNode - Reset communication...\n");
+    log_printf("CANopenNode - Reset communication...");
 
     /* Wait rt_thread. */
     CO->CANmodule->CANnormal = false;
@@ -135,17 +163,22 @@ int canopen_app_resetCommunication()
     /* initialize CANopen */
     err = CO_CANinit(CO, canopenNodeStm32, 0);    // Bitrate for STM32 microcontroller is being set in MXCube Settings
     if (err != CO_ERROR_NO) {
-        log_printf("Error: CAN initialization failed: %d\n", err);
+        log_printf("Error: CAN initialization failed: (%d) %s", err, canOpenErrorToStr(err));
         return 1;
     }
 
-    CO_LSS_address_t lssAddress = {.identity = {.vendorID       = OD_PERSIST_COMM.x1018_identity.vendor_ID,
-                                                .productCode    = OD_PERSIST_COMM.x1018_identity.productCode,
-                                                .revisionNumber = OD_PERSIST_COMM.x1018_identity.revisionNumber,
-                                                .serialNumber   = OD_PERSIST_COMM.x1018_identity.serialNumber}};
+    CO_LSS_address_t lssAddress = {
+      .identity =
+        {
+          .vendorID       = OD_PERSIST_COMM.x1018_identity.vendor_ID,
+          .productCode    = OD_PERSIST_COMM.x1018_identity.productCode,
+          .revisionNumber = OD_PERSIST_COMM.x1018_identity.revisionNumber,
+          .serialNumber   = OD_PERSIST_COMM.x1018_identity.serialNumber,
+        },
+    };
     err = CO_LSSinit(CO, &lssAddress, &canopenNodeStm32->desiredNodeId, &canopenNodeStm32->baudrate);
     if (err != CO_ERROR_NO) {
-        log_printf("Error: LSS slave initialization failed: %d\n", err);
+        log_printf("Error: LSS slave initialization failed: (%d) %s", err, canOpenErrorToStr(err));
         return 2;
     }
 
@@ -165,18 +198,19 @@ int canopen_app_resetCommunication()
                          canopenNodeStm32->activeNodeId,
                          &errInfo);
     if (err != CO_ERROR_NO && err != CO_ERROR_NODE_ID_UNCONFIGURED_LSS) {
-        if (err == CO_ERROR_OD_PARAMETERS) { log_printf("Error: Object Dictionary entry 0x%lX\n", errInfo); }
+        if (err == CO_ERROR_OD_PARAMETERS) { log_printf("Error: Object Dictionary entry 0x%lX", errInfo); }
         else {
-            log_printf("Error: CANopen initialization failed: %d\n", err);
+            log_printf("Error: CANopen initialization failed: (%d) %s", err, canOpenErrorToStr(err));
         }
         return 3;
     }
 
     err = CO_CANopenInitPDO(CO, CO->em, OD, canopenNodeStm32->activeNodeId, &errInfo);
     if (err != CO_ERROR_NO) {
-        if (err == CO_ERROR_OD_PARAMETERS) { log_printf("Error: Object Dictionary entry 0x%lX\n", errInfo); }
+        if (err == CO_ERROR_OD_PARAMETERS) { log_printf("Error: Object Dictionary entry 0x%lX", errInfo); }
+        if (err == CO_ERROR_NODE_ID_UNCONFIGURED_LSS) { log_printf("Node ID not configured, skipping PDO init"); }
         else {
-            log_printf("Error: PDO initialization failed: %d\n", err);
+            log_printf("Error: PDO initialization failed: (%d) %s", err, canOpenErrorToStr(err));
         }
         return 4;
     }
@@ -196,13 +230,13 @@ int canopen_app_resetCommunication()
 #endif
     }
     else {
-        log_printf("CANopenNode - Node-id not initialized\n");
+        log_printf("CANopenNode - Node-id not initialized");
     }
 
     /* start CAN */
     CO_CANsetNormalMode(CO->CANmodule);
 
-    log_printf("CANopenNode - Running...\n");
+    log_printf("CANopenNode - Running...");
     fflush(stdout);
     timeOld = timeCurrent = HAL_GetTick();
     return 0;
@@ -228,11 +262,11 @@ void canopen_app_process()
             HAL_TIM_Base_Stop_IT(canopenNodeStm32->timerHandle);
             CO_CANsetConfigurationMode(canopenNodeStm32);
             CO_delete(CO);
-            log_printf("CANopenNode Reset Communication request\n");
+            log_printf("CANopenNode Reset Communication request");
             canopen_app_init(canopenNodeStm32);    // Reset Communication routine
         }
         else if (resetStatus == CO_RESET_APP) {
-            log_printf("CANopenNode Device Reset\n");
+            log_printf("CANopenNode Device Reset");
             HAL_NVIC_SystemReset();    // Reset the STM32 Microcontroller
         }
     }

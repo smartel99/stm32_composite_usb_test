@@ -170,10 +170,10 @@ int canopen_app_resetCommunication()
     CO_LSS_address_t lssAddress = {
       .identity =
         {
-          .vendorID       = OD_PERSIST_COMM.x1018_identity.vendor_ID,
-          .productCode    = OD_PERSIST_COMM.x1018_identity.productCode,
-          .revisionNumber = OD_PERSIST_COMM.x1018_identity.revisionNumber,
-          .serialNumber   = OD_PERSIST_COMM.x1018_identity.serialNumber,
+          .vendorID       = 0x12345678,    // OD_PERSIST_COMM.x1018_identity.vendor_ID,
+          .productCode    = 0x9ABCDEF0,    // OD_PERSIST_COMM.x1018_identity.productCode,
+          .revisionNumber = 0x12345678,    // OD_PERSIST_COMM.x1018_identity.revisionNumber,
+          .serialNumber   = 0x9ABCDEF0,    // OD_PERSIST_COMM.x1018_identity.serialNumber,
         },
     };
     err = CO_LSSinit(CO, &lssAddress, &canopenNodeStm32->desiredNodeId, &canopenNodeStm32->baudrate);
@@ -237,7 +237,6 @@ int canopen_app_resetCommunication()
     CO_CANsetNormalMode(CO->CANmodule);
 
     log_printf("CANopenNode - Running...");
-    fflush(stdout);
     timeOld = timeCurrent = HAL_GetTick();
     return 0;
 }
@@ -262,6 +261,7 @@ void canopen_app_process()
             HAL_TIM_Base_Stop_IT(canopenNodeStm32->timerHandle);
             CO_CANsetConfigurationMode(canopenNodeStm32);
             CO_delete(CO);
+            CO = nullptr;
             log_printf("CANopenNode Reset Communication request");
             canopen_app_init(canopenNodeStm32);    // Reset Communication routine
         }

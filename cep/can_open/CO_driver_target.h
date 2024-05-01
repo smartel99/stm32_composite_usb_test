@@ -48,6 +48,12 @@ extern "C" {
 /* Stack configuration override default values.
  * For more information see file CO_config.h. */
 
+#define CO_alloc(num, size) CO_myAlloc(num, size)
+#define CO_free(ptr)        CO_myFree(ptr)
+
+void* CO_myAlloc(size_t num, size_t size);
+void  CO_myFree(void* ptr);
+
 /* Basic definitions. If big endian, CO_SWAP_xx macros must swap bytes. */
 #define CO_LITTLE_ENDIAN
 #define CO_SWAP_16(x) x
@@ -82,7 +88,7 @@ typedef struct {
     uint16_t ident;
     uint16_t mask;
     void*    object;
-    void (*CANrx_callback)(void* object, void* message);
+    void     (*CANrx_callback)(void* object, void* message);
 } CO_CANrx_t;
 
 /* Transmit message object */

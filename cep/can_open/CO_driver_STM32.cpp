@@ -33,8 +33,10 @@
 
 #include "can_manager.h"
 
+#include <cstring>
+
 #pragma clang diagnostic push
-#pragma ide diagnostic ignored "OCInconsistentNamingInspection"
+#pragma ide diagnostic   ignored "OCInconsistentNamingInspection"
 #if defined(__cplusplus)
 extern "C" {
 #endif
@@ -45,6 +47,21 @@ static CO_CANmodule_t* CANModule_local = nullptr; /* Local instance of global CA
 /* CAN masks for identifiers */
 #define CANID_MASK 0x07FF /*!< CAN standard ID mask */
 #define FLAG_RTR   0x8000 /*!< RTR flag, part of identifier */
+
+
+void* CO_alloc(size_t num, size_t size)
+{
+    void* ptr = pvPortMalloc(num * size);
+    if (ptr != nullptr) {
+        std::memset(ptr, 0, num*size);
+    }
+    return ptr;
+}
+
+void CO_free(void* ptr)
+{
+    vPortFree(ptr);
+}
 
 /******************************************************************************/
 void CO_CANsetConfigurationMode(void* CANptr)
@@ -157,7 +174,7 @@ CO_ReturnError_t CO_CANrxBufferInit(CO_CANmodule_t* CANmodule,
                                     uint16_t        mask,
                                     bool_t          rtr,
                                     void*           object,
-                                    void (*CANrx_callback)(void* object, void* message))
+                                    void            (*CANrx_callback)(void* object, void* message))
 {
     CO_ReturnError_t ret = CO_ERROR_NO;
 
@@ -293,7 +310,6 @@ void CO_CANmodule_process(CO_CANmodule_t* CANmodule)
           (FDCAN_PSR_BO | FDCAN_PSR_EW | FDCAN_PSR_EP);
 
     if (CANmodule->errOld != err) {
-
         uint16_t status = CANmodule->CANerrorStatus;
 
         CANmodule->errOld = err;
@@ -338,7 +354,8 @@ void prv_read_can_received_msg(const SlCan::Packet& packet)
     /* Setup identifier (with RTR) and length */
     rcvMsg.ident = packet.data.packetData.id | (packet.data.packetData.isRemote ? FLAG_RTR : 0x00);
     rcvMsg.dlc   = packet.data.packetData.dataLen;
-    rcvMsgIdent  = rcvMsg.ident;
+    memcpy(&rcvMsg.data[0], &packet.data.packetData.data[0], rcvMsg.dlc);
+    rcvMsgIdent = rcvMsg.ident;
 
     /*
      * Hardware filters are not used for the moment

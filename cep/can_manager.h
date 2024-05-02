@@ -48,12 +48,11 @@ public:
 private:
     explicit CanManager(CDC_DeviceInfo* usb, FDCAN_HandleTypeDef* hcan);
 
-    bool initCan();
-
     friend void HAL_FDCAN_RxFifo0Callback(FDCAN_HandleTypeDef* hfdcan, uint32_t RxFifo0ITs);
     friend void HAL_FDCAN_RxFifo1Callback(FDCAN_HandleTypeDef* hfdcan, uint32_t RxFifo1ITs);
     friend void HAL_FDCAN_TxBufferCompleteCallback(FDCAN_HandleTypeDef* hfdcan, uint32_t BufferIndexes);
     friend void HAL_FDCAN_ErrorStatusCallback(FDCAN_HandleTypeDef *hfdcan, uint32_t ErrorStatusITs);
+    friend void HAL_FDCAN_ErrorCallback(FDCAN_HandleTypeDef* hfdcan);
     void        receiveFromIrq(const RxPacket& packet);
 
     void transmitPacketOverUsb(const SlCan::Packet& packet);
@@ -61,6 +60,8 @@ private:
 
     [[noreturn]] static void txTask(void* args);
     [[noreturn]] static void rxTask(void* args);
+
+    void handleCanError();
 
 private:
     static constexpr const char*    s_tag   = "CAN";

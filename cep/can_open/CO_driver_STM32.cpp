@@ -140,7 +140,7 @@ CO_ReturnError_t CO_CANmodule_init(CO_CANmodule_t* CANmodule,
      */
     if (HAL_FDCAN_ConfigGlobalFilter(static_cast<CanopenNodeStm32*>(CANptr)->canHandle,
                                      FDCAN_ACCEPT_IN_RX_FIFO0,
-                                     FDCAN_REJECT,
+                                     FDCAN_ACCEPT_IN_RX_FIFO1,
                                      FDCAN_FILTER_REMOTE,
                                      FDCAN_FILTER_REMOTE) != HAL_OK) {
         return CO_ERROR_ILLEGAL_ARGUMENT;

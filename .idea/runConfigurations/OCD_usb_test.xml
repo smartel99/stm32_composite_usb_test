@@ -1,6 +1,6 @@
 <component name="ProjectRunConfigurationManager">
-  <configuration default="false" name="OCD usb_test" type="com.jetbrains.cidr.embedded.openocd.conf.type" factoryName="com.jetbrains.cidr.embedded.openocd.conf.factory" REDIRECT_INPUT="false" ELEVATE="false" USE_EXTERNAL_CONSOLE="false" EMULATE_TERMINAL="false" PASS_PARENT_ENVS_2="true" PROJECT_NAME="usb_test" TARGET_NAME="usb_test.elf" CONFIG_NAME="Release-GCC_ARM_13.2" version="1" RUN_TARGET_PROJECT_NAME="usb_test" RUN_TARGET_NAME="usb_test.elf">
-    <openocd version="1" gdb-port="3333" telnet-port="4444" board-config="board/st_nucleo_g4.cfg" reset-type="HALT" download-type="UPDATED_ONLY">
+  <configuration default="false" name="OCD usb_test" type="com.jetbrains.cidr.embedded.openocd.conf.type" factoryName="com.jetbrains.cidr.embedded.openocd.conf.factory" REDIRECT_INPUT="false" ELEVATE="false" USE_EXTERNAL_CONSOLE="false" EMULATE_TERMINAL="false" PASS_PARENT_ENVS_2="true" PROJECT_NAME="usb_test" TARGET_NAME="usb_test.elf" CONFIG_NAME="Debug-GCC_ARM_13.2" version="1" RUN_TARGET_PROJECT_NAME="usb_test" RUN_TARGET_NAME="usb_test.elf">
+    <openocd version="1" gdb-port="3333" telnet-port="4444" board-config="C:\github\stm32_composite_usb_test\g473\st_nucleo_g4.cfg" reset-type="HALT" download-type="UPDATED_ONLY">
       <debugger kind="GDB" isBundled="true" />
     </openocd>
     <method v="2">

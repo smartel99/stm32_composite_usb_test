@@ -101,26 +101,21 @@ extern "C" void HAL_FDCAN_ErrorStatusCallback(FDCAN_HandleTypeDef* hfdcan, uint3
     auto& that = CanManager::get();
     if (hfdcan != that.m_can) { return; }
 
-    // Error during transmission.
-    FDCAN_ProtocolStatusTypeDef status {};
-    HAL_FDCAN_GetProtocolStatus(that.m_can, &status);
-    if ((ErrorStatusITs & FDCAN_IT_LIST_PROTOCOL_ERROR) != 0) {
-        that.m_attemptsForCanPacket++;
-        if (that.m_attemptsForCanPacket >= CanManager::s_maxAttemptsPerCanPacket) {
-            that.m_droppedCanPackets++;
-            // Figure out which buffer is currently the one being sent.
-            auto currBuffer = (that.m_can->Instance->TXFQS & FDCAN_TXFQS_TFGI_Msk) >> FDCAN_TXFQS_TFGI_Pos;
-            HAL_FDCAN_AbortTxRequest(that.m_can, currBuffer);
-        }
-    }
+    that.handleCanError();
+}
+
+extern "C" void HAL_FDCAN_ErrorCallback(FDCAN_HandleTypeDef* hfdcan)
+{
+    auto& that = CanManager::get();
+    if (hfdcan != that.m_can) { return; }
+
+    that.handleCanError();
 }
 
 CanManager::CanManager(CDC_DeviceInfo* usb, FDCAN_HandleTypeDef* hcan) : m_usb(usb), m_can(hcan)
 {
     static_assert(std::is_trivially_copyable_v<RxPacket>);
     Logging::Logger::setLevel(s_tag, s_level);
-
-//    configASSERT(initCan() && "Unable to configure CAN");
 
     CDC_SetOnReceived(
       usb,
@@ -142,43 +137,6 @@ CanManager::CanManager(CDC_DeviceInfo* usb, FDCAN_HandleTypeDef* hcan) : m_usb(u
 
     res = xTaskCreate(&rxTask, "can_rx", s_rxTaskStackSize, this, s_rxTaskPriority, &m_rxTask);
     configASSERT(res == pdPASS);
-}
-
-bool CanManager::initCan()
-{
-    // Allow everything on CAN!
-    FDCAN_FilterTypeDef sFilterConfig;
-
-    /* Configure Rx filter */
-    sFilterConfig.IdType       = FDCAN_STANDARD_ID;
-    sFilterConfig.FilterIndex  = 0;
-    sFilterConfig.FilterType   = FDCAN_FILTER_MASK;
-    sFilterConfig.FilterConfig = FDCAN_FILTER_TO_RXFIFO0;
-    sFilterConfig.FilterID1    = 0;
-    sFilterConfig.FilterID2    = 0;
-    if (HAL_FDCAN_ConfigFilter(m_can, &sFilterConfig) != HAL_OK) { return false; }
-
-    sFilterConfig.IdType      = FDCAN_EXTENDED_ID;
-    sFilterConfig.FilterIndex = 1;
-    if (HAL_FDCAN_ConfigFilter(m_can, &sFilterConfig) != HAL_OK) { return false; }
-
-    if (HAL_FDCAN_ConfigGlobalFilter(
-          m_can, FDCAN_ACCEPT_IN_RX_FIFO0, FDCAN_ACCEPT_IN_RX_FIFO0, FDCAN_FILTER_REMOTE, FDCAN_FILTER_REMOTE) !=
-        HAL_OK) {
-        return false;
-    }
-
-    /* Start the FDCAN module */
-    if (HAL_FDCAN_Start(m_can) != HAL_OK) { return false; }
-
-    static constexpr auto notifications = FDCAN_IT_RX_FIFO0_NEW_MESSAGE | FDCAN_IT_RX_FIFO1_NEW_MESSAGE |
-                                          FDCAN_IT_TX_COMPLETE | FDCAN_IT_LIST_PROTOCOL_ERROR;
-    if (HAL_FDCAN_ActivateNotification(m_can, notifications, FDCAN_TX_BUFFER0 | FDCAN_TX_BUFFER1 | FDCAN_TX_BUFFER2) !=
-        HAL_OK) {
-        return false;
-    }
-
-    return true;
 }
 
 bool CanManager::init(CDC_DeviceInfo* usb, FDCAN_HandleTypeDef* hcan)
@@ -259,7 +217,11 @@ void CanManager::transmitPacketOverCan(const SlCan::Packet& packet, bool isFromR
             else {
                 m_txTaskWaitingForTxRoom = true;
             }
-            ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
+            if (ulTaskNotifyTake(pdTRUE, pdMS_TO_TICKS(1)) != 1) {
+                // Timed out, drop the packet.
+                ++m_droppedCanPackets;
+                return;
+            }
         }
 
         HAL_FDCAN_AddMessageToTxFifoQ(m_can, &header.value(), &packet.data.packetData.data[0]);
@@ -333,4 +295,19 @@ void CanManager::transmitPacketOverCan(const SlCan::Packet& packet, bool isFromR
 
     vTaskDelete(nullptr);
     std::unreachable();
+}
+
+void CanManager::handleCanError()
+{
+    m_attemptsForCanPacket++;
+    if (m_attemptsForCanPacket >= s_maxAttemptsPerCanPacket) {
+        m_droppedCanPackets++;
+        // Figure out which buffer is currently the one being sent.
+        auto currBuffer = (m_can->Instance->TXFQS & FDCAN_TXFQS_TFGI_Msk) >> FDCAN_TXFQS_TFGI_Pos;
+        if (currBuffer == 0) {
+            // Can't figure out which specific mailbox causes issues, so fuck them all.
+            currBuffer = FDCAN_TX_BUFFER0 | FDCAN_TX_BUFFER1 | FDCAN_TX_BUFFER2;
+        }
+        HAL_FDCAN_AbortTxRequest(m_can, currBuffer);
+    }
 }

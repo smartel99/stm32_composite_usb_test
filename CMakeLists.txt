@@ -34,6 +34,7 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-volatile")
 add_compile_options($<$<COMPILE_LANGUAGE:ASM>:-x$<SEMICOLON>assembler-with-cpp>)
 
 # To reduce binary file output size.
+add_compile_options(-flto=auto)
 add_compile_options(-fdata-sections)
 add_compile_options(-ffunction-sections)
 add_compile_options(-fmessage-length=0)
@@ -138,6 +139,7 @@ add_link_options(--specs=nano.specs)
 add_link_options(-u _printf_float)
 add_link_options(-Wl,--no-warn-rwx-segments) # Disable GCC 12.2 new warning for RWX segments
 add_link_options(-T ${LINKER_SCRIPT})
+add_link_options(-flto=auto)
 
 add_executable(${PROJECT_NAME}.elf ${SOURCES} ${LINKER_SCRIPT})
 

@@ -196,7 +196,6 @@ standard names. */
 /* USER CODE BEGIN Defines */
 /* Section where parameter definitions can be added (for instance, to override default ones in FreeRTOS.h) */
 extern unsigned int g_lastRequestedMallocSize;
-// #define traceFREE(pvAddress, uiSize) printf("vPortFree(): addr: %p, size: %u\n", pvAddress, uiSize)
 #define traceMALLOC(pvAddress, uiSize)            g_lastRequestedMallocSize = uiSize
 
 //#define configUSE_LIST_DATA_INTEGRITY_CHECK_BYTES 1
